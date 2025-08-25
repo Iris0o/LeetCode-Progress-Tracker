@@ -11,25 +11,40 @@
 
 > 🚀 **Track your coding progress like never before!** Monitor multiple LeetCode profiles, visualize solving statistics with beautiful charts, and stay motivated on your programming journey.
 
-## 🌟 What is this?
+## 🌟 What is this? / Что это такое?
 
 **LeetCode Progress Tracker** is a comprehensive web application that helps developers track and visualize their problem-solving progress on LeetCode. Whether you're preparing for technical interviews, competing with friends, or just want to see your growth over time, this tool provides beautiful charts and detailed statistics to keep you motivated.
 
-### ✨ Key Features:
-- 📊 **Interactive Charts** - Beautiful visualizations of your progress
-- 👥 **Multi-User Tracking** - Compare progress with friends and colleagues  
-- 🎯 **Difficulty Analysis** - Track Easy, Medium, and Hard problems separately
-- 🔄 **Auto Updates** - Automatically fetch latest statistics
-- 🌐 **Modern Interface** - Clean, responsive web design
-- 🌍 **Multi-Language** - Available in English and Russian
+**LeetCode Progress Tracker** — это комплексное веб-приложение, которое помогает разработчикам отслеживать и визуализировать свой прогресс решения задач на LeetCode. Независимо от того, готовитесь ли вы к техническим собеседованиям, соревнуетесь с друзьями или просто хотите видеть свой рост со временем, этот инструмент предоставляет красивые графики и подробную статистику для мотивации.
+
+### ✨ Key Features / Ключевые возможности:
+- 📊 **Interactive Charts / Интерактивные графики** - Beautiful visualizations of your progress / Красивые визуализации вашего прогресса
+- 👥 **Multi-User Tracking / Отслеживание нескольких пользователей** - Compare progress with friends and colleagues / Сравнивайте прогресс с друзьями и коллегами
+- 🎯 **Difficulty Analysis / Анализ сложности** - Track Easy, Medium, and Hard problems separately / Отслеживайте задачи уровня Easy, Medium и Hard отдельно
+- 🔄 **Auto Updates / Автообновления** - Automatically fetch latest statistics / Автоматическое получение актуальной статистики
+- 🌐 **Modern Interface / Современный интерфейс** - Clean, responsive web design / Чистый, отзывчивый веб-дизайн
+- 🌍 **Multi-Language / Многоязычность** - Available in English and Russian / Доступно на английском и русском языках
 
 ## Choose Your Language / Выберите язык
 
 - [🇺🇸 English](README_en.md)
 - [🇷🇺 Русский](README_ru.md)
 
-## 🚀 Quick Start
+## 📋 About the Project / О проекте
 
+**English**: This project helps developers visualize their LeetCode journey through comprehensive tracking and beautiful charts. Built with modern web technologies, it provides real-time insights into your problem-solving patterns and progress over time.
+
+**Русский**: Этот проект помогает разработчикам визуализировать их путь на LeetCode через комплексное отслеживание и красивые графики. Созданный с использованием современных веб-технологий, он предоставляет информацию в реальном времени о ваших паттернах решения задач и прогрессе с течением времени.
+
+### 🛠️ Technologies Used / Используемые технологии:
+- **Backend**: Python, Flask
+- **Frontend**: HTML, CSS, JavaScript  
+- **Charts**: Chart.js
+- **Data**: CSV processing, LeetCode API
+
+## 🚀 Quick Start / Быстрый старт
+
+### English:
 ```bash
 # 1. Install dependencies
 pip install -r requirements.txt
@@ -42,7 +57,20 @@ python data_collector.py
 python app.py
 ```
 
-Then open http://localhost:8000 in your browser!
+### Русский:
+```bash
+# 1. Установите зависимости
+pip install -r requirements.txt
+
+# 2. Настройте ваш LeetCode username в config.py
+# 3. Соберите данные
+python data_collector.py
+
+# 4. Запустите веб-приложение
+python app.py
+```
+
+Then open http://localhost:8000 in your browser! / Затем откройте http://localhost:8000 в вашем браузере!
 
 ---
 
