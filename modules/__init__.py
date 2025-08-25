@@ -13,7 +13,7 @@ from .web_views import web_router
 __all__ = [
     'load_and_process_data',
     'create_progress_plot_data',
-    'create_total_plot_data', 
+    'create_total_plot_data',
     'create_difficulty_breakdown_data',
     'create_daily_progress_data',
     'create_difficulty_total_data',

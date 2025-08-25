@@ -1,11 +1,13 @@
+from modules import api_router, plot_router, web_router
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import matplotlib
-matplotlib.use('Agg')  # Используем не-интерактивный backend для matplotlib (если понадобится)
+# Используем не-интерактивный backend для matplotlib (если понадобится)
+matplotlib.use('Agg')
 
-from modules import api_router, plot_router, web_router
 
-app = FastAPI(title="LeetCode Progress Tracker", description="Отслеживание прогресса на LeетCode")
+app = FastAPI(title="LeetCode Progress Tracker",
+              description="Отслеживание прогресса на LeетCode")
 
 # Подключаем статические файлы
 app.mount("/static", StaticFiles(directory="static"), name="static")
