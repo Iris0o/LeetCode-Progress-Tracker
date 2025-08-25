@@ -1,5 +1,22 @@
 // LeetCode Progress Tracker - ApexCharts Integration
 
+// Константы конфигурации
+const CHART_LOAD_TIMEOUT = 10000; // 10 секунд
+
+// Утилитарные функции
+function getErrorMessage(error) {
+    return error?.message || error?.toString() || 'Неизвестная ошибка';
+}
+
+// Конфигурация загрузки
+const loadingConfig = {
+    showLoading: true,          // Показывать индикатор загрузки
+    useSkeletonLoading: false,  // Использовать skeleton loading вместо спиннера (только если showLoading: true)
+    preloadCharts: true,        // Предзагружать популярные графики
+    fastSwitch: true,           // Быстрое переключение между табами
+    preloadChartTypes: ['total', 'daily'] // Типы графиков для предзагрузки
+};
+
 // Карта соответствия endpoints и контейнеров для графиков
 const chartEndpoints = {
     'progress': '/api/plot/progress',
@@ -24,14 +41,98 @@ const chartContainers = {
 // Кэш для хранения созданных диаграмм
 let chartsCache = {};
 
+// Счетчик активных загрузок для предотвращения перегрузки сети
+let activeLoadingCount = 0;
+const MAX_CONCURRENT_LOADS = 2;
+
+// Очередь ожидающих загрузки графиков
+const loadQueue = [];
+
+// Функция для безопасной загрузки с ограничением параллельных запросов
+async function safeLoadChart(chartType) {
+    return new Promise((resolve, reject) => {
+        const loadTask = async () => {
+            try {
+                activeLoadingCount++;
+                const result = await loadChart(chartType);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            } finally {
+                activeLoadingCount--;
+                processLoadQueue();
+            }
+        };
+
+        if (activeLoadingCount < MAX_CONCURRENT_LOADS) {
+            loadTask();
+        } else {
+            loadQueue.push(loadTask);
+        }
+    });
+}
+
+// Обработка очереди загрузки
+function processLoadQueue() {
+    if (loadQueue.length > 0 && activeLoadingCount < MAX_CONCURRENT_LOADS) {
+        const nextTask = loadQueue.shift();
+        nextTask();
+    }
+}
+
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();
     initializeTabs();
     initializeTooltips();
     
-    // Загружаем первый график
-    loadChart('progress');
+    // Загружаем первый график без задержки
+    const activeTab = document.querySelector('.tab-btn.active');
+    let initialChartType = 'progress'; // По умолчанию
+    
+    if (activeTab) {
+        const chartType = activeTab.dataset.chart;
+        console.log('Found active tab with chart type:', chartType);
+        
+        // Проверяем что такой тип графика существует
+        if (chartEndpoints[chartType]) {
+            initialChartType = chartType;
+        } else {
+            console.error('Chart type not found in endpoints:', chartType);
+        }
+    } else {
+        console.log('No active tab found, using default progress chart');
+    }
+    
+    // Показываем контейнер и загружаем график
+    showChart(initialChartType);
+    loadChart(initialChartType);
+    
+    // Предзагружаем следующие популярные графики в фоне с небольшой задержкой
+    if (loadingConfig.preloadCharts) {
+        setTimeout(async () => {
+            const preloadCharts = loadingConfig.preloadChartTypes || [];
+            const preloadPromises = [];
+            
+            // Ограничиваем количество одновременных запросов
+            for (const type of preloadCharts) {
+                if (type !== initialChartType && chartEndpoints[type] && !chartsCache[type]) {
+                    const preloadPromise = safeLoadChart(type).catch(error => {
+                        console.warn(`Failed to preload chart ${type}: ${getErrorMessage(error)}`);
+                        return null; // Не прерываем предзагрузку других графиков
+                    });
+                    preloadPromises.push(preloadPromise);
+                }
+            }
+            
+            // Ожидаем завершения всех предзагрузок
+            if (preloadPromises.length > 0) {
+                const results = await Promise.allSettled(preloadPromises);
+                const successful = results.filter(result => result.status === 'fulfilled' && result.value !== null).length;
+                console.log(`Preloaded ${successful} out of ${preloadPromises.length} charts`);
+            }
+        }, 500);
+    }
 });
 
 // Инициализация табов
@@ -49,9 +150,11 @@ function initializeTabs() {
             // Показываем соответствующий контейнер графика
             showChart(chartType);
             
-            // Загружаем график если не загружен
+            // Загружаем график если не загружен (асинхронно, не блокируя UI)
             if (!chartsCache[chartType]) {
-                loadChart(chartType);
+                safeLoadChart(chartType).catch(error => {
+                    console.error(`Failed to load chart ${chartType}: ${getErrorMessage(error)}`);
+                });
             }
         });
     });
@@ -60,16 +163,19 @@ function initializeTabs() {
 // Показать контейнер графика
 function showChart(chartType) {
     const chartContainersElements = document.querySelectorAll('.chart');
-    const targetContainer = document.getElementById(chartType + '-chart');
     
     // Скрываем все контейнеры
     chartContainersElements.forEach(container => {
         container.classList.remove('active');
     });
     
-    // Показываем нужный
+    // Показываем нужный контейнер по составному ID (chartType + '-chart')
+    const targetContainer = document.getElementById(chartType + '-chart');
     if (targetContainer) {
         targetContainer.classList.add('active');
+        console.log(`Showing chart container: ${chartType}-chart`);
+    } else {
+        console.error(`Container ${chartType}-chart not found`);
     }
 }
 
@@ -80,25 +186,62 @@ async function loadChart(chartType) {
     
     if (!endpoint || !containerId) {
         console.error(`Chart type ${chartType} not found`);
-        return;
+        return null;
+    }
+    
+    // Если график уже загружен, возвращаем его сразу
+    if (chartsCache[chartType]) {
+        console.log(`Chart ${chartType} already cached, skipping load`);
+        return chartsCache[chartType];
     }
     
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container ${containerId} not found`);
-        return;
+        return null;
     }
     
     try {
-        // Показываем индикатор загрузки
-        container.innerHTML = '<div class="chart-loading">📊 Загрузка графика...</div>';
+        // Показываем индикатор загрузки в зависимости от настроек
+        if (loadingConfig.showLoading) {
+            if (loadingConfig.useSkeletonLoading) {
+                container.innerHTML = `
+                    <div class="chart-skeleton">
+                        <div class="skeleton-header"></div>
+                        <div class="skeleton-chart"></div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = '<div class="chart-loading"></div>';
+            }
+        }
         
-        const response = await fetch(endpoint);
+        // Добавляем таймаут для предотвращения долгих ожиданий
+        let timeoutId;
+        let response;
+        
+        try {
+            response = await Promise.race([
+                fetch(endpoint),
+                new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error(`Превышено время ожидания (${CHART_LOAD_TIMEOUT / 1000} секунд)`)), CHART_LOAD_TIMEOUT);
+                })
+            ]);
+        } finally {
+            // Всегда очищаем таймер, независимо от результата
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        }
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP ошибка: ${response.status} ${response.statusText}`);
         }
         
         const chartConfig = await response.json();
+        
+        // Очищаем контейнер от индикатора загрузки
+        container.innerHTML = '';
         
         // Создаем новый график
         const chart = new ApexCharts(container, chartConfig);
@@ -113,15 +256,18 @@ async function loadChart(chartType) {
         }
         
         console.log(`Chart ${chartType} loaded successfully`);
+        return chart;
     } catch (error) {
         console.error(`Error loading chart ${chartType}:`, error);
+        
         container.innerHTML = `
             <div class="chart-error">
-                ❌ Ошибка загрузки графика: ${error.message}
+                ❌ Ошибка загрузки графика: ${getErrorMessage(error)}
                 <br>
                 <button onclick="loadChart('${chartType}')" class="retry-btn">🔄 Попробовать снова</button>
             </div>
         `;
+        return null;
     }
 }
 
@@ -129,6 +275,60 @@ async function loadChart(chartType) {
 function initializeCharts() {
     // Инициализируем только активные вкладки при первой загрузке
     console.log('Charts initialized');
+}
+
+// Флаг для предотвращения повторной инициализации тултипов
+let tooltipsInitialized = false;
+
+// WeakMap для хранения обработчиков событий тултипов
+const tooltipHandlers = new WeakMap();
+
+// Функция для очистки тултипов (если потребуется)
+function cleanupTooltips() {
+    const tooltipElements = document.querySelectorAll('[data-tooltip="true"]');
+    tooltipElements.forEach(element => {
+        const handlers = tooltipHandlers.get(element);
+        if (handlers) {
+            element.removeEventListener('mouseenter', handlers.showTooltip);
+            element.removeEventListener('mouseleave', handlers.hideTooltip);
+            tooltipHandlers.delete(element);
+        }
+    });
+    tooltipsInitialized = false;
+    console.log('Tooltips cleaned up');
+}
+
+// Инициализация тултипов
+function initializeTooltips() {
+    // Предотвращаем повторную инициализацию
+    if (tooltipsInitialized) {
+        console.log('Tooltips already initialized, skipping');
+        return;
+    }
+    
+    // Добавляем обработчики для тултипов если они есть
+    const tooltipElements = document.querySelectorAll('[data-tooltip="true"]');
+    tooltipElements.forEach(element => {
+        const tooltipContent = element.querySelector('.tooltip-content');
+        if (tooltipContent) {
+            // Создаем функции для обработчиков
+            const showTooltip = () => {
+                tooltipContent.style.display = 'block';
+            };
+            const hideTooltip = () => {
+                tooltipContent.style.display = 'none';
+            };
+            
+            element.addEventListener('mouseenter', showTooltip);
+            element.addEventListener('mouseleave', hideTooltip);
+            
+            // Сохраняем ссылки на функции в WeakMap
+            tooltipHandlers.set(element, { showTooltip, hideTooltip });
+        }
+    });
+    
+    tooltipsInitialized = true;
+    console.log('Tooltips initialized');
 }
 
 // Обновление данных
@@ -254,8 +454,122 @@ function debugChartData(chartType) {
         });
 }
 
+// Функция для мониторинга состояния загрузки
+function getLoadingStatus() {
+    return {
+        activeLoadingCount,
+        queueLength: loadQueue.length,
+        cachedCharts: Object.keys(chartsCache),
+        maxConcurrentLoads: MAX_CONCURRENT_LOADS,
+        timeout: CHART_LOAD_TIMEOUT,
+        config: { ...loadingConfig }
+    };
+}
+
+// Функция для изменения настроек загрузки
+function configureLoading(options = {}) {
+    // Валидные свойства конфигурации
+    const validOptions = ['showLoading', 'useSkeletonLoading', 'preloadCharts', 'fastSwitch', 'preloadChartTypes'];
+    const validatedOptions = {};
+    
+    // Проверяем каждое переданное свойство
+    for (const [key, value] of Object.entries(options)) {
+        if (validOptions.includes(key)) {
+            if (key === 'preloadChartTypes') {
+                // Проверяем что это массив строк
+                if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+                    validatedOptions[key] = value;
+                } else {
+                    console.warn(`Invalid value type for ${key}: expected array of strings, got ${typeof value}`);
+                }
+            } else {
+                // Проверяем тип значения (должен быть boolean для остальных свойств)
+                if (typeof value === 'boolean') {
+                    validatedOptions[key] = value;
+                } else {
+                    console.warn(`Invalid value type for ${key}: expected boolean, got ${typeof value}`);
+                }
+            }
+        } else {
+            console.warn(`Unknown configuration option: ${key}. Valid options are: ${validOptions.join(', ')}`);
+        }
+    }
+    
+    // Применяем только валидные настройки
+    Object.assign(loadingConfig, validatedOptions);
+    
+    // Проверяем конфликты конфигурации
+    if (!loadingConfig.showLoading && loadingConfig.useSkeletonLoading) {
+        console.warn('Configuration conflict: useSkeletonLoading is meaningless when showLoading is false. Setting useSkeletonLoading to false.');
+        loadingConfig.useSkeletonLoading = false;
+    }
+    
+    console.log('Loading configuration updated:', loadingConfig);
+    
+    if (Object.keys(validatedOptions).length === 0) {
+        console.warn('No valid configuration options were provided');
+    }
+}
+
+// Быстрые предустановки
+function disableLoading() {
+    configureLoading({ showLoading: false });
+}
+
+function enableFastLoading() {
+    configureLoading({ 
+        showLoading: true,
+        useSkeletonLoading: false,
+        preloadCharts: true,
+        fastSwitch: true 
+    });
+}
+
+function enableSkeletonLoading() {
+    configureLoading({ 
+        showLoading: true,
+        useSkeletonLoading: true,
+        preloadCharts: true 
+    });
+}
+
+// Быстрая настройка предзагружаемых графиков
+function setPreloadCharts(chartTypes) {
+    if (!Array.isArray(chartTypes)) {
+        console.warn('setPreloadCharts expects an array of chart types');
+        return;
+    }
+    
+    const validChartTypes = chartTypes.filter(type => chartEndpoints[type]);
+    if (validChartTypes.length !== chartTypes.length) {
+        const invalidTypes = chartTypes.filter(type => !chartEndpoints[type]);
+        console.warn('Invalid chart types ignored:', invalidTypes);
+    }
+    
+    configureLoading({ preloadChartTypes: validChartTypes });
+}
+
+// Сброс конфигурации к безопасным значениям по умолчанию
+function resetLoadingConfig() {
+    loadingConfig.showLoading = true;
+    loadingConfig.useSkeletonLoading = false;
+    loadingConfig.preloadCharts = true;
+    loadingConfig.fastSwitch = true;
+    loadingConfig.preloadChartTypes = ['total', 'daily'];
+    console.log('Loading configuration reset to defaults:', loadingConfig);
+}
+
 // Экспорт функций для глобального доступа
 window.updateData = updateData;
 window.loadChart = loadChart;
+window.safeLoadChart = safeLoadChart;
 window.debugChartData = debugChartData;
+window.getLoadingStatus = getLoadingStatus;
 window.toggleDifficultyLevel = toggleDifficultyLevel;
+window.configureLoading = configureLoading;
+window.setPreloadCharts = setPreloadCharts;
+window.resetLoadingConfig = resetLoadingConfig;
+window.disableLoading = disableLoading;
+window.enableFastLoading = enableFastLoading;
+window.enableSkeletonLoading = enableSkeletonLoading;
+window.cleanupTooltips = cleanupTooltips;
