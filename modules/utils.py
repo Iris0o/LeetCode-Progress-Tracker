@@ -3,11 +3,11 @@
 
 def get_latest_value(dataframe, username):
     """Получить последнее значение для пользователя из DataFrame.
-    
+
     Args:
         dataframe: pandas DataFrame с данными
         username: имя пользователя для поиска в колонках
-        
+
     Returns:
         int: Последнее значение для пользователя или 0 если данных нет
     """

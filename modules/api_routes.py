@@ -231,33 +231,27 @@ async def get_stats():
                 latest_progress = data_dict['progress_total'][username].dropna(
                 ).iloc[-1] if not data_dict['progress_total'][username].dropna().empty else 0
 
-                user_stats = {
-                    'total_solved': int(latest_total),
-                    'progress_from_start': int(latest_progress)
-                }
-
-                # Добавляем детализацию по сложности, если доступна
                 latest_easy = get_latest_value(data_dict['easy'], username)
                 latest_medium = get_latest_value(data_dict['medium'], username)
                 latest_hard = get_latest_value(data_dict['hard'], username)
 
-                user_stats.update({
+                user_stats = {
+                    'total_solved': int(latest_total),
+                    'progress_from_start': int(latest_progress),
                     'easy_solved': int(latest_easy),
                     'medium_solved': int(latest_medium),
                     'hard_solved': int(latest_hard)
-                })
+                }
 
                 stats[username] = user_stats
             else:
-                base_stats = {
+                stats[username] = {
                     'total_solved': 0,
                     'progress_from_start': 0,
                     'easy_solved': 0,
                     'medium_solved': 0,
                     'hard_solved': 0
                 }
-
-                stats[username] = base_stats
 
         # Последнее обновление
         if not data_dict['total'].empty:
