@@ -27,12 +27,9 @@ async def index(request: Request):
                 latest_progress = data_dict['progress_total'][username].dropna().iloc[-1] if not data_dict['progress_total'][username].dropna().empty else 0
                 
                 # Детальная статистика по сложности, если доступна
-                if data_dict['has_difficulty_data']:
-                    latest_easy = data_dict['easy'][username].dropna().iloc[-1] if not data_dict['easy'][username].dropna().empty else 0
-                    latest_medium = data_dict['medium'][username].dropna().iloc[-1] if not data_dict['medium'][username].dropna().empty else 0
-                    latest_hard = data_dict['hard'][username].dropna().iloc[-1] if not data_dict['hard'][username].dropna().empty else 0
-                else:
-                    latest_easy = latest_medium = latest_hard = 0
+                latest_easy = data_dict['easy'][username].dropna().iloc[-1] if not data_dict['easy'].empty and username in data_dict['easy'].columns and not data_dict['easy'][username].dropna().empty else 0
+                latest_medium = data_dict['medium'][username].dropna().iloc[-1] if not data_dict['medium'].empty and username in data_dict['medium'].columns and not data_dict['medium'][username].dropna().empty else 0
+                latest_hard = data_dict['hard'][username].dropna().iloc[-1] if not data_dict['hard'].empty and username in data_dict['hard'].columns and not data_dict['hard'][username].dropna().empty else 0
                 
                 stats.append({
                     'username': username,
@@ -53,22 +50,21 @@ async def index(request: Request):
                 })
         
         # Добавляем прогресс по сложности в статистику
-        if data_dict['has_difficulty_data']:
-            for stat in stats:
-                easy_progress = 0
-                medium_progress = 0
-                hard_progress = 0
-                
-                if stat['username'] in data_dict['progress_easy'].columns:
-                    easy_progress = int(data_dict['progress_easy'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_easy'][stat['username']].dropna().empty else 0
-                if stat['username'] in data_dict['progress_medium'].columns:
-                    medium_progress = int(data_dict['progress_medium'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_medium'][stat['username']].dropna().empty else 0
-                if stat['username'] in data_dict['progress_hard'].columns:
-                    hard_progress = int(data_dict['progress_hard'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_hard'][stat['username']].dropna().empty else 0
-                
-                stat['easy_progress'] = easy_progress
-                stat['medium_progress'] = medium_progress
-                stat['hard_progress'] = hard_progress
+        for stat in stats:
+            easy_progress = 0
+            medium_progress = 0
+            hard_progress = 0
+            
+            if not data_dict['progress_easy'].empty and stat['username'] in data_dict['progress_easy'].columns:
+                easy_progress = int(data_dict['progress_easy'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_easy'][stat['username']].dropna().empty else 0
+            if not data_dict['progress_medium'].empty and stat['username'] in data_dict['progress_medium'].columns:
+                medium_progress = int(data_dict['progress_medium'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_medium'][stat['username']].dropna().empty else 0
+            if not data_dict['progress_hard'].empty and stat['username'] in data_dict['progress_hard'].columns:
+                hard_progress = int(data_dict['progress_hard'][stat['username']].dropna().iloc[-1]) if not data_dict['progress_hard'][stat['username']].dropna().empty else 0
+            
+            stat['easy_progress'] = easy_progress
+            stat['medium_progress'] = medium_progress
+            stat['hard_progress'] = hard_progress
 
         # Последнее обновление
         if not data_dict['total'].empty:
@@ -80,7 +76,7 @@ async def index(request: Request):
             "request": request,
             "stats": stats,
             "last_update": last_update,
-            "has_difficulty_data": data_dict['has_difficulty_data']
+            "has_difficulty_data": not data_dict['easy'].empty or not data_dict['medium'].empty or not data_dict['hard'].empty
         })
         
     except Exception as e:

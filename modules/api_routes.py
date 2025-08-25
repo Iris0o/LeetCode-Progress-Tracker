@@ -66,11 +66,8 @@ async def get_difficulty_breakdown_plot_data():
     """Возвращает данные для графика распределения по уровням сложности."""
     try:
         data_dict = load_and_process_data()
-        if not data_dict['has_difficulty_data']:
-            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
-        
         if data_dict['easy'].empty or data_dict['medium'].empty or data_dict['hard'].empty:
-            raise HTTPException(status_code=404, detail="Нет данных для построения графика по сложности")
+            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
         
         chart_config = create_difficulty_breakdown_data(data_dict['easy'], data_dict['medium'], data_dict['hard'])
         
@@ -109,11 +106,8 @@ async def get_difficulty_total_plot_data():
     """Возвращает данные для графика общего количества задач по уровням сложности."""
     try:
         data_dict = load_and_process_data()
-        if not data_dict['has_difficulty_data']:
-            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
-        
         if data_dict['easy'].empty or data_dict['medium'].empty or data_dict['hard'].empty:
-            raise HTTPException(status_code=404, detail="Нет данных для построения графика общего количества по сложности")
+            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
         
         chart_config = create_difficulty_total_data(data_dict['easy'], data_dict['medium'], data_dict['hard'])
         
@@ -132,11 +126,8 @@ async def get_difficulty_progress_plot_data():
     """Возвращает данные для графика прогресса по уровням сложности."""
     try:
         data_dict = load_and_process_data()
-        if not data_dict['has_difficulty_data']:
-            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
-        
         if data_dict['progress_easy'].empty or data_dict['progress_medium'].empty or data_dict['progress_hard'].empty:
-            raise HTTPException(status_code=404, detail="Нет данных для построения графика прогресса по сложности")
+            raise HTTPException(status_code=404, detail="Данные о сложности недоступны. Обновите данные для получения детальной статистики.")
         
         chart_config = create_difficulty_progress_data(data_dict['progress_easy'], data_dict['progress_medium'], data_dict['progress_hard'])
         
@@ -215,30 +206,25 @@ async def get_stats():
                 }
                 
                 # Добавляем детализацию по сложности, если доступна
-                if data_dict['has_difficulty_data']:
-                    latest_easy = data_dict['easy'][username].dropna().iloc[-1] if not data_dict['easy'][username].dropna().empty else 0
-                    latest_medium = data_dict['medium'][username].dropna().iloc[-1] if not data_dict['medium'][username].dropna().empty else 0
-                    latest_hard = data_dict['hard'][username].dropna().iloc[-1] if not data_dict['hard'][username].dropna().empty else 0
-                    
-                    user_stats.update({
-                        'easy_solved': int(latest_easy),
-                        'medium_solved': int(latest_medium),
-                        'hard_solved': int(latest_hard)
-                    })
+                latest_easy = data_dict['easy'][username].dropna().iloc[-1] if not data_dict['easy'].empty and username in data_dict['easy'].columns and not data_dict['easy'][username].dropna().empty else 0
+                latest_medium = data_dict['medium'][username].dropna().iloc[-1] if not data_dict['medium'].empty and username in data_dict['medium'].columns and not data_dict['medium'][username].dropna().empty else 0
+                latest_hard = data_dict['hard'][username].dropna().iloc[-1] if not data_dict['hard'].empty and username in data_dict['hard'].columns and not data_dict['hard'][username].dropna().empty else 0
+                
+                user_stats.update({
+                    'easy_solved': int(latest_easy),
+                    'medium_solved': int(latest_medium),
+                    'hard_solved': int(latest_hard)
+                })
                 
                 stats[username] = user_stats
             else:
                 base_stats = {
                     'total_solved': 0,
-                    'progress_from_start': 0
+                    'progress_from_start': 0,
+                    'easy_solved': 0,
+                    'medium_solved': 0,
+                    'hard_solved': 0
                 }
-                
-                if data_dict['has_difficulty_data']:
-                    base_stats.update({
-                        'easy_solved': 0,
-                        'medium_solved': 0,
-                        'hard_solved': 0
-                    })
                 
                 stats[username] = base_stats
         
@@ -252,7 +238,7 @@ async def get_stats():
             'stats': stats,
             'last_update': last_update,
             'total_users': len(USERNAMES),
-            'has_difficulty_data': data_dict['has_difficulty_data']
+            'has_difficulty_data': not data_dict['easy'].empty or not data_dict['medium'].empty or not data_dict['hard'].empty
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения статистики: {str(e)}")
