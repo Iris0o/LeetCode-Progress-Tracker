@@ -25,7 +25,8 @@ plot_router = APIRouter(prefix="/plot")
 
 
 @api_router.get("/plot/progress")
-async def get_progress_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_progress_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для интерактивного графика прогресса."""
     try:
         data_dict = load_and_process_data()
@@ -36,7 +37,8 @@ async def get_progress_plot_data(request: Request, lang: str = Cookie(default="r
 
         # Используем язык из cookie или параметра
         language = lang if lang in i18n.get_supported_languages() else "ru"
-        chart_config = create_progress_plot_data(data_dict['progress_total'], language)
+        chart_config = create_progress_plot_data(
+            data_dict['progress_total'], language)
 
         return JSONResponse(content=chart_config)
     except HTTPException:
@@ -50,7 +52,8 @@ async def get_progress_plot_data(request: Request, lang: str = Cookie(default="r
 
 
 @api_router.get("/plot/total")
-async def get_total_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_total_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для интерактивного графика общего количества."""
     try:
         data_dict = load_and_process_data()
@@ -75,7 +78,8 @@ async def get_total_plot_data(request: Request, lang: str = Cookie(default="ru")
 
 
 @api_router.get("/plot/difficulty-breakdown")
-async def get_difficulty_breakdown_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_difficulty_breakdown_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для графика распределения по уровням сложности."""
     try:
         data_dict = load_and_process_data()
@@ -101,7 +105,8 @@ async def get_difficulty_breakdown_plot_data(request: Request, lang: str = Cooki
 
 
 @api_router.get("/plot/daily-progress")
-async def get_daily_progress_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_daily_progress_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для графика прогресса по дням."""
     try:
         data_dict = load_and_process_data()
@@ -126,7 +131,8 @@ async def get_daily_progress_plot_data(request: Request, lang: str = Cookie(defa
 
 
 @api_router.get("/plot/difficulty-total")
-async def get_difficulty_total_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_difficulty_total_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для графика общего количества задач по уровням сложности."""
     try:
         data_dict = load_and_process_data()
@@ -153,7 +159,8 @@ async def get_difficulty_total_plot_data(request: Request, lang: str = Cookie(de
 
 
 @api_router.get("/plot/difficulty-progress")
-async def get_difficulty_progress_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_difficulty_progress_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для графика прогресса по уровням сложности."""
     try:
         data_dict = load_and_process_data()
@@ -181,7 +188,8 @@ async def get_difficulty_progress_plot_data(request: Request, lang: str = Cookie
 
 
 @api_router.get("/plot/weekly-heatmap")
-async def get_weekly_heatmap_plot_data(request: Request, lang: str = Cookie(default="ru")):
+async def get_weekly_heatmap_plot_data(
+        request: Request, lang: str = Cookie(default="ru")):
     """Возвращает данные для тепловой карты активности."""
     try:
         data_dict = load_and_process_data()
@@ -319,16 +327,16 @@ async def set_language(language: str = Form(...)):
             status_code=400,
             detail=f"Неподдерживаемый язык: {language}"
         )
-    
+
     # Создаем Response с переводами
     response_data = {
         "status": "success",
         "language": language,
         "translations": i18n.get_all_translations(language)
     }
-    
+
     response = JSONResponse(content=response_data)
-    
+
     # Устанавливаем cookie на 365 дней
     response.set_cookie(
         key="lang",
@@ -337,7 +345,7 @@ async def set_language(language: str = Form(...)):
         httponly=False,  # Позволяем доступ из JavaScript
         samesite="lax"
     )
-    
+
     return response
 
 
@@ -349,7 +357,7 @@ async def get_translations(language: str):
             status_code=400,
             detail=f"Неподдерживаемый язык: {language}"
         )
-    
+
     return JSONResponse(content={
         "language": language,
         "translations": i18n.get_all_translations(language)

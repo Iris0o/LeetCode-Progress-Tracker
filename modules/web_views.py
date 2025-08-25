@@ -21,7 +21,7 @@ async def index(request: Request, lang: str = Cookie(default="ru")):
     """Главная страница с графиками."""
     # Устанавливаем язык из cookie
     i18n.set_language(lang if lang in i18n.get_supported_languages() else "ru")
-    
+
     try:
         data_dict = load_and_process_data()
 

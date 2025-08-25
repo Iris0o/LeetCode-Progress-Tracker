@@ -13,7 +13,7 @@ def create_progress_plot_data(df, language="ru"):
     """Создает конфигурацию для интерактивного графика прогресса с ApexCharts."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     series = []
 
     for username in df.columns:
@@ -86,7 +86,7 @@ def create_total_plot_data(df, language="ru"):
     """Создает конфигурацию для интерактивного графика общего количества задач с ApexCharts."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     series = []
 
     for username in df.columns:
@@ -155,11 +155,12 @@ def create_total_plot_data(df, language="ru"):
     return chart_config
 
 
-def create_difficulty_breakdown_data(df_easy, df_medium, df_hard, language="ru"):
+def create_difficulty_breakdown_data(
+        df_easy, df_medium, df_hard, language="ru"):
     """Создает конфигурацию для интерактивного графика распределения задач по уровням сложности."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     categories = []
     easy_data = []
     medium_data = []
@@ -240,7 +241,7 @@ def create_daily_progress_data(data_dict, language="ru"):
     """Создает конфигурацию для графика прогресса с группировкой по дням."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     df_total = data_dict['total']
 
     if df_total.empty:
@@ -315,7 +316,7 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard, language="ru"):
     """Создает конфигурацию для графика общего количества задач по каждому уровню сложности."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     series = []
 
     colors = {
@@ -401,7 +402,7 @@ def create_difficulty_progress_data(
     """Создает конфигурацию для графика прогресса по каждому уровню сложности."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     series = []
 
     colors = {
@@ -486,7 +487,7 @@ def create_weekly_heatmap_data(data_dict, language="ru"):
     """Создает конфигурацию для тепловой карты активности по дням недели и часам."""
     # Устанавливаем язык для переводов
     i18n.set_language(language)
-    
+
     df_total = data_dict['total']
 
     if df_total.empty:
