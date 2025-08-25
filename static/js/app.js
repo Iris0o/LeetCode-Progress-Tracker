@@ -32,6 +32,45 @@ const chartContainers = {
 // Кэш для хранения созданных диаграмм
 let chartsCache = {};
 
+// Счетчик активных загрузок для предотвращения перегрузки сети
+let activeLoadingCount = 0;
+const MAX_CONCURRENT_LOADS = 2;
+
+// Очередь ожидающих загрузки графиков
+const loadQueue = [];
+
+// Функция для безопасной загрузки с ограничением параллельных запросов
+async function safeLoadChart(chartType) {
+    return new Promise((resolve, reject) => {
+        const loadTask = async () => {
+            try {
+                activeLoadingCount++;
+                const result = await loadChart(chartType);
+                resolve(result);
+            } catch (error) {
+                reject(error);
+            } finally {
+                activeLoadingCount--;
+                processLoadQueue();
+            }
+        };
+
+        if (activeLoadingCount < MAX_CONCURRENT_LOADS) {
+            loadTask();
+        } else {
+            loadQueue.push(loadTask);
+        }
+    });
+}
+
+// Обработка очереди загрузки
+function processLoadQueue() {
+    if (loadQueue.length > 0 && activeLoadingCount < MAX_CONCURRENT_LOADS) {
+        const nextTask = loadQueue.shift();
+        nextTask();
+    }
+}
+
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();
@@ -62,13 +101,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Предзагружаем следующие популярные графики в фоне с небольшой задержкой
     if (loadingConfig.preloadCharts) {
-        setTimeout(() => {
+        setTimeout(async () => {
             const preloadCharts = ['total', 'daily'];
-            preloadCharts.forEach(type => {
-                if (type !== initialChartType && chartEndpoints[type]) {
-                    loadChart(type);
+            const preloadPromises = [];
+            
+            // Ограничиваем количество одновременных запросов
+            for (const type of preloadCharts) {
+                if (type !== initialChartType && chartEndpoints[type] && !chartsCache[type]) {
+                    const preloadPromise = safeLoadChart(type).catch(error => {
+                        console.warn(`Failed to preload chart ${type}:`, error.message);
+                        return null; // Не прерываем предзагрузку других графиков
+                    });
+                    preloadPromises.push(preloadPromise);
                 }
-            });
+            }
+            
+            // Ожидаем завершения всех предзагрузок
+            if (preloadPromises.length > 0) {
+                const results = await Promise.allSettled(preloadPromises);
+                const successful = results.filter(result => result.status === 'fulfilled' && result.value !== null).length;
+                console.log(`Preloaded ${successful} out of ${preloadPromises.length} charts`);
+            }
         }, 500);
     }
 });
@@ -90,7 +143,9 @@ function initializeTabs() {
             
             // Загружаем график если не загружен (асинхронно, не блокируя UI)
             if (!chartsCache[chartType]) {
-                loadChart(chartType);
+                safeLoadChart(chartType).catch(error => {
+                    console.error(`Failed to load chart ${chartType}:`, error.message);
+                });
             }
         });
     });
@@ -122,18 +177,19 @@ async function loadChart(chartType) {
     
     if (!endpoint || !containerId) {
         console.error(`Chart type ${chartType} not found`);
-        return;
+        return null;
     }
     
-    // Если график уже загружен, не загружаем повторно
+    // Если график уже загружен, возвращаем его сразу
     if (chartsCache[chartType]) {
+        console.log(`Chart ${chartType} already cached, skipping load`);
         return chartsCache[chartType];
     }
     
     const container = document.getElementById(containerId);
     if (!container) {
         console.error(`Container ${containerId} not found`);
-        return;
+        return null;
     }
     
     try {
@@ -152,14 +208,25 @@ async function loadChart(chartType) {
         }
         
         // Добавляем таймаут для предотвращения долгих ожиданий
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Превышено время ожидания (10 секунд)')), 10000)
-        );
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => reject(new Error('Превышено время ожидания (10 секунд)')), 10000);
+        });
         
-        const response = await Promise.race([
-            fetch(endpoint),
-            timeoutPromise
-        ]);
+        let response;
+        try {
+            response = await Promise.race([
+                fetch(endpoint),
+                timeoutPromise
+            ]);
+            
+            // Очищаем таймер после успешного получения ответа
+            clearTimeout(timeoutId);
+        } catch (error) {
+            // Очищаем таймер в случае ошибки
+            clearTimeout(timeoutId);
+            throw error;
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP ошибка: ${response.status} ${response.statusText}`);
@@ -183,6 +250,7 @@ async function loadChart(chartType) {
         }
         
         console.log(`Chart ${chartType} loaded successfully`);
+        return chart;
     } catch (error) {
         console.error(`Error loading chart ${chartType}:`, error);
         container.innerHTML = `
@@ -192,6 +260,7 @@ async function loadChart(chartType) {
                 <button onclick="loadChart('${chartType}')" class="retry-btn">🔄 Попробовать снова</button>
             </div>
         `;
+        return null;
     }
 }
 
@@ -376,6 +445,16 @@ function debugChartData(chartType) {
         });
 }
 
+// Функция для мониторинга состояния загрузки
+function getLoadingStatus() {
+    return {
+        activeLoadingCount,
+        queueLength: loadQueue.length,
+        cachedCharts: Object.keys(chartsCache),
+        maxConcurrentLoads: MAX_CONCURRENT_LOADS
+    };
+}
+
 // Функция для изменения настроек загрузки
 function configureLoading(options = {}) {
     // Валидные свойства конфигурации
@@ -430,7 +509,9 @@ function enableSkeletonLoading() {
 // Экспорт функций для глобального доступа
 window.updateData = updateData;
 window.loadChart = loadChart;
+window.safeLoadChart = safeLoadChart;
 window.debugChartData = debugChartData;
+window.getLoadingStatus = getLoadingStatus;
 window.toggleDifficultyLevel = toggleDifficultyLevel;
 window.configureLoading = configureLoading;
 window.disableLoading = disableLoading;
