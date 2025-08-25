@@ -589,3 +589,38 @@ h1 {
         justify-content: center;
     }
 }
+
+/* Учитываем предпочтения пользователя по анимациям */
+@media (prefers-reduced-motion: reduce) {
+    /* Отключаем все анимации для пользователей с ограниченными возможностями */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    /* Полностью отключаем анимации loading индикаторов */
+    .chart-loading::before {
+        animation: none !important;
+    }
+    
+    .chart-skeleton,
+    .skeleton-chart::before {
+        animation: none !important;
+    }
+    
+    /* Убираем hover эффекты */
+    .user-stat:hover {
+        transform: none !important;
+    }
+    
+    .tab-btn:hover {
+        transform: none !important;
+    }
+    
+    .difficulty-btn:hover {
+        transform: none !important;
+    }
+}

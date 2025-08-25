@@ -151,10 +151,18 @@ async function loadChart(chartType) {
             }
         }
         
-        // Используем Promise.race для таймаута если нужно
-        const response = await fetch(endpoint);
+        // Добавляем таймаут для предотвращения долгих ожиданий
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Превышено время ожидания (10 секунд)')), 10000)
+        );
+        
+        const response = await Promise.race([
+            fetch(endpoint),
+            timeoutPromise
+        ]);
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP ошибка: ${response.status} ${response.statusText}`);
         }
         
         const chartConfig = await response.json();
@@ -193,21 +201,55 @@ function initializeCharts() {
     console.log('Charts initialized');
 }
 
+// Флаг для предотвращения повторной инициализации тултипов
+let tooltipsInitialized = false;
+
+// Функция для очистки тултипов (если потребуется)
+function cleanupTooltips() {
+    const tooltipElements = document.querySelectorAll('[data-tooltip="true"]');
+    tooltipElements.forEach(element => {
+        if (element._showTooltip && element._hideTooltip) {
+            element.removeEventListener('mouseenter', element._showTooltip);
+            element.removeEventListener('mouseleave', element._hideTooltip);
+            delete element._showTooltip;
+            delete element._hideTooltip;
+        }
+    });
+    tooltipsInitialized = false;
+    console.log('Tooltips cleaned up');
+}
+
 // Инициализация тултипов
 function initializeTooltips() {
+    // Предотвращаем повторную инициализацию
+    if (tooltipsInitialized) {
+        console.log('Tooltips already initialized, skipping');
+        return;
+    }
+    
     // Добавляем обработчики для тултипов если они есть
     const tooltipElements = document.querySelectorAll('[data-tooltip="true"]');
     tooltipElements.forEach(element => {
         const tooltipContent = element.querySelector('.tooltip-content');
         if (tooltipContent) {
-            element.addEventListener('mouseenter', () => {
+            // Создаем функции для обработчиков чтобы их можно было удалить позже
+            const showTooltip = () => {
                 tooltipContent.style.display = 'block';
-            });
-            element.addEventListener('mouseleave', () => {
+            };
+            const hideTooltip = () => {
                 tooltipContent.style.display = 'none';
-            });
+            };
+            
+            element.addEventListener('mouseenter', showTooltip);
+            element.addEventListener('mouseleave', hideTooltip);
+            
+            // Сохраняем ссылки на функции для возможного удаления
+            element._showTooltip = showTooltip;
+            element._hideTooltip = hideTooltip;
         }
     });
+    
+    tooltipsInitialized = true;
     console.log('Tooltips initialized');
 }
 
@@ -336,8 +378,31 @@ function debugChartData(chartType) {
 
 // Функция для изменения настроек загрузки
 function configureLoading(options = {}) {
-    Object.assign(loadingConfig, options);
+    // Валидные свойства конфигурации
+    const validOptions = ['showLoading', 'useSkeletonLoading', 'preloadCharts', 'fastSwitch'];
+    const validatedOptions = {};
+    
+    // Проверяем каждое переданное свойство
+    for (const [key, value] of Object.entries(options)) {
+        if (validOptions.includes(key)) {
+            // Проверяем тип значения (должен быть boolean)
+            if (typeof value === 'boolean') {
+                validatedOptions[key] = value;
+            } else {
+                console.warn(`Invalid value type for ${key}: expected boolean, got ${typeof value}`);
+            }
+        } else {
+            console.warn(`Unknown configuration option: ${key}. Valid options are: ${validOptions.join(', ')}`);
+        }
+    }
+    
+    // Применяем только валидные настройки
+    Object.assign(loadingConfig, validatedOptions);
     console.log('Loading configuration updated:', loadingConfig);
+    
+    if (Object.keys(validatedOptions).length === 0) {
+        console.warn('No valid configuration options were provided');
+    }
 }
 
 // Быстрые предустановки
@@ -371,3 +436,4 @@ window.configureLoading = configureLoading;
 window.disableLoading = disableLoading;
 window.enableFastLoading = enableFastLoading;
 window.enableSkeletonLoading = enableSkeletonLoading;
+window.cleanupTooltips = cleanupTooltips;
