@@ -5,18 +5,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from modules.data_processor import load_and_process_data
+from modules.utils import get_latest_value
 from config import USERNAMES
 
 templates = Jinja2Templates(directory="templates")
-
-
-def get_latest_value(dataframe, username):
-    """Получить последнее значение для пользователя из DataFrame."""
-    if (dataframe.empty or
-        username not in dataframe.columns or
-            dataframe[username].dropna().empty):
-        return 0
-    return dataframe[username].dropna().iloc[-1]
 
 
 # Создаем роутер для веб-страниц

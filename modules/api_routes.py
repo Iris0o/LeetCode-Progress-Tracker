@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from modules.data_processor import load_and_process_data
+from modules.utils import get_latest_value
 from modules.chart_creator import (
     create_progress_plot_data, create_total_plot_data,
     create_difficulty_breakdown_data, create_daily_progress_data,
@@ -13,15 +14,6 @@ from modules.chart_creator import (
     create_weekly_heatmap_data, create_progress_plot, create_total_plot
 )
 from config import USERNAMES
-
-
-def get_latest_value(dataframe, username):
-    """Получить последнее значение для пользователя из DataFrame."""
-    if (dataframe.empty or
-        username not in dataframe.columns or
-            dataframe[username].dropna().empty):
-        return 0
-    return dataframe[username].dropna().iloc[-1]
 
 
 # Создаем роутер для API
