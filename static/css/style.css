@@ -592,13 +592,14 @@ h1 {
 
 /* Учитываем предпочтения пользователя по анимациям */
 @media (prefers-reduced-motion: reduce) {
-    /* Отключаем все анимации для пользователей с ограниченными возможностями */
+    /* Полностью отключаем анимации для пользователей с ограниченными возможностями */
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
+        animation-duration: 0s !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        transition-duration: 0s !important;
+        scroll-behavior: auto !important;
     }
     
     /* Полностью отключаем анимации loading индикаторов */

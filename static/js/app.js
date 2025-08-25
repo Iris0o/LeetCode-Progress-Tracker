@@ -1,9 +1,12 @@
 // LeetCode Progress Tracker - ApexCharts Integration
 
+// Константы конфигурации
+const CHART_LOAD_TIMEOUT = 10000; // 10 секунд
+
 // Конфигурация загрузки
 const loadingConfig = {
-    showLoading: false,         // Показывать индикатор загрузки (false = мгновенная загрузка)
-    useSkeletonLoading: true,   // Использовать skeleton loading вместо спиннера
+    showLoading: true,          // Показывать индикатор загрузки
+    useSkeletonLoading: false,  // Использовать skeleton loading вместо спиннера (только если showLoading: true)
     preloadCharts: true,        // Предзагружать популярные графики
     fastSwitch: true            // Быстрое переключение между табами
 };
@@ -109,7 +112,8 @@ document.addEventListener('DOMContentLoaded', function() {
             for (const type of preloadCharts) {
                 if (type !== initialChartType && chartEndpoints[type] && !chartsCache[type]) {
                     const preloadPromise = safeLoadChart(type).catch(error => {
-                        console.warn(`Failed to preload chart ${type}:`, error.message);
+                        const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
+                        console.warn(`Failed to preload chart ${type}: ${errorMessage}`);
                         return null; // Не прерываем предзагрузку других графиков
                     });
                     preloadPromises.push(preloadPromise);
@@ -144,7 +148,8 @@ function initializeTabs() {
             // Загружаем график если не загружен (асинхронно, не блокируя UI)
             if (!chartsCache[chartType]) {
                 safeLoadChart(chartType).catch(error => {
-                    console.error(`Failed to load chart ${chartType}:`, error.message);
+                    const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
+                    console.error(`Failed to load chart ${chartType}: ${errorMessage}`);
                 });
             }
         });
@@ -210,7 +215,7 @@ async function loadChart(chartType) {
         // Добавляем таймаут для предотвращения долгих ожиданий
         let timeoutId;
         const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error('Превышено время ожидания (10 секунд)')), 10000);
+            timeoutId = setTimeout(() => reject(new Error(`Превышено время ожидания (${CHART_LOAD_TIMEOUT / 1000} секунд)`)), CHART_LOAD_TIMEOUT);
         });
         
         let response;
@@ -253,9 +258,13 @@ async function loadChart(chartType) {
         return chart;
     } catch (error) {
         console.error(`Error loading chart ${chartType}:`, error);
+        
+        // Безопасное получение сообщения об ошибке
+        const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
+        
         container.innerHTML = `
             <div class="chart-error">
-                ❌ Ошибка загрузки графика: ${error.message}
+                ❌ Ошибка загрузки графика: ${errorMessage}
                 <br>
                 <button onclick="loadChart('${chartType}')" class="retry-btn">🔄 Попробовать снова</button>
             </div>
@@ -273,15 +282,18 @@ function initializeCharts() {
 // Флаг для предотвращения повторной инициализации тултипов
 let tooltipsInitialized = false;
 
+// WeakMap для хранения обработчиков событий тултипов
+const tooltipHandlers = new WeakMap();
+
 // Функция для очистки тултипов (если потребуется)
 function cleanupTooltips() {
     const tooltipElements = document.querySelectorAll('[data-tooltip="true"]');
     tooltipElements.forEach(element => {
-        if (element._showTooltip && element._hideTooltip) {
-            element.removeEventListener('mouseenter', element._showTooltip);
-            element.removeEventListener('mouseleave', element._hideTooltip);
-            delete element._showTooltip;
-            delete element._hideTooltip;
+        const handlers = tooltipHandlers.get(element);
+        if (handlers) {
+            element.removeEventListener('mouseenter', handlers.showTooltip);
+            element.removeEventListener('mouseleave', handlers.hideTooltip);
+            tooltipHandlers.delete(element);
         }
     });
     tooltipsInitialized = false;
@@ -301,7 +313,7 @@ function initializeTooltips() {
     tooltipElements.forEach(element => {
         const tooltipContent = element.querySelector('.tooltip-content');
         if (tooltipContent) {
-            // Создаем функции для обработчиков чтобы их можно было удалить позже
+            // Создаем функции для обработчиков
             const showTooltip = () => {
                 tooltipContent.style.display = 'block';
             };
@@ -312,9 +324,8 @@ function initializeTooltips() {
             element.addEventListener('mouseenter', showTooltip);
             element.addEventListener('mouseleave', hideTooltip);
             
-            // Сохраняем ссылки на функции для возможного удаления
-            element._showTooltip = showTooltip;
-            element._hideTooltip = hideTooltip;
+            // Сохраняем ссылки на функции в WeakMap
+            tooltipHandlers.set(element, { showTooltip, hideTooltip });
         }
     });
     
@@ -451,7 +462,9 @@ function getLoadingStatus() {
         activeLoadingCount,
         queueLength: loadQueue.length,
         cachedCharts: Object.keys(chartsCache),
-        maxConcurrentLoads: MAX_CONCURRENT_LOADS
+        maxConcurrentLoads: MAX_CONCURRENT_LOADS,
+        timeout: CHART_LOAD_TIMEOUT,
+        config: { ...loadingConfig }
     };
 }
 
@@ -477,6 +490,13 @@ function configureLoading(options = {}) {
     
     // Применяем только валидные настройки
     Object.assign(loadingConfig, validatedOptions);
+    
+    // Проверяем конфликты конфигурации
+    if (!loadingConfig.showLoading && loadingConfig.useSkeletonLoading) {
+        console.warn('Configuration conflict: useSkeletonLoading is meaningless when showLoading is false. Setting useSkeletonLoading to false.');
+        loadingConfig.useSkeletonLoading = false;
+    }
+    
     console.log('Loading configuration updated:', loadingConfig);
     
     if (Object.keys(validatedOptions).length === 0) {
@@ -506,6 +526,15 @@ function enableSkeletonLoading() {
     });
 }
 
+// Сброс конфигурации к безопасным значениям по умолчанию
+function resetLoadingConfig() {
+    loadingConfig.showLoading = true;
+    loadingConfig.useSkeletonLoading = false;
+    loadingConfig.preloadCharts = true;
+    loadingConfig.fastSwitch = true;
+    console.log('Loading configuration reset to defaults:', loadingConfig);
+}
+
 // Экспорт функций для глобального доступа
 window.updateData = updateData;
 window.loadChart = loadChart;
@@ -514,6 +543,7 @@ window.debugChartData = debugChartData;
 window.getLoadingStatus = getLoadingStatus;
 window.toggleDifficultyLevel = toggleDifficultyLevel;
 window.configureLoading = configureLoading;
+window.resetLoadingConfig = resetLoadingConfig;
 window.disableLoading = disableLoading;
 window.enableFastLoading = enableFastLoading;
 window.enableSkeletonLoading = enableSkeletonLoading;
