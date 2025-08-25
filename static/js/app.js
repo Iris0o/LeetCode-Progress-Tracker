@@ -3,12 +3,18 @@
 // Константы конфигурации
 const CHART_LOAD_TIMEOUT = 10000; // 10 секунд
 
+// Утилитарные функции
+function getErrorMessage(error) {
+    return error?.message || error?.toString() || 'Неизвестная ошибка';
+}
+
 // Конфигурация загрузки
 const loadingConfig = {
     showLoading: true,          // Показывать индикатор загрузки
     useSkeletonLoading: false,  // Использовать skeleton loading вместо спиннера (только если showLoading: true)
     preloadCharts: true,        // Предзагружать популярные графики
-    fastSwitch: true            // Быстрое переключение между табами
+    fastSwitch: true,           // Быстрое переключение между табами
+    preloadChartTypes: ['total', 'daily'] // Типы графиков для предзагрузки
 };
 
 // Карта соответствия endpoints и контейнеров для графиков
@@ -105,15 +111,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Предзагружаем следующие популярные графики в фоне с небольшой задержкой
     if (loadingConfig.preloadCharts) {
         setTimeout(async () => {
-            const preloadCharts = ['total', 'daily'];
+            const preloadCharts = loadingConfig.preloadChartTypes || [];
             const preloadPromises = [];
             
             // Ограничиваем количество одновременных запросов
             for (const type of preloadCharts) {
                 if (type !== initialChartType && chartEndpoints[type] && !chartsCache[type]) {
                     const preloadPromise = safeLoadChart(type).catch(error => {
-                        const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
-                        console.warn(`Failed to preload chart ${type}: ${errorMessage}`);
+                        console.warn(`Failed to preload chart ${type}: ${getErrorMessage(error)}`);
                         return null; // Не прерываем предзагрузку других графиков
                     });
                     preloadPromises.push(preloadPromise);
@@ -148,8 +153,7 @@ function initializeTabs() {
             // Загружаем график если не загружен (асинхронно, не блокируя UI)
             if (!chartsCache[chartType]) {
                 safeLoadChart(chartType).catch(error => {
-                    const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
-                    console.error(`Failed to load chart ${chartType}: ${errorMessage}`);
+                    console.error(`Failed to load chart ${chartType}: ${getErrorMessage(error)}`);
                 });
             }
         });
@@ -214,23 +218,20 @@ async function loadChart(chartType) {
         
         // Добавляем таймаут для предотвращения долгих ожиданий
         let timeoutId;
-        const timeoutPromise = new Promise((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error(`Превышено время ожидания (${CHART_LOAD_TIMEOUT / 1000} секунд)`)), CHART_LOAD_TIMEOUT);
-        });
-        
         let response;
+        
         try {
             response = await Promise.race([
                 fetch(endpoint),
-                timeoutPromise
+                new Promise((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error(`Превышено время ожидания (${CHART_LOAD_TIMEOUT / 1000} секунд)`)), CHART_LOAD_TIMEOUT);
+                })
             ]);
-            
-            // Очищаем таймер после успешного получения ответа
-            clearTimeout(timeoutId);
-        } catch (error) {
-            // Очищаем таймер в случае ошибки
-            clearTimeout(timeoutId);
-            throw error;
+        } finally {
+            // Всегда очищаем таймер, независимо от результата
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
         }
         
         if (!response.ok) {
@@ -259,12 +260,9 @@ async function loadChart(chartType) {
     } catch (error) {
         console.error(`Error loading chart ${chartType}:`, error);
         
-        // Безопасное получение сообщения об ошибке
-        const errorMessage = error?.message || error?.toString() || 'Неизвестная ошибка';
-        
         container.innerHTML = `
             <div class="chart-error">
-                ❌ Ошибка загрузки графика: ${errorMessage}
+                ❌ Ошибка загрузки графика: ${getErrorMessage(error)}
                 <br>
                 <button onclick="loadChart('${chartType}')" class="retry-btn">🔄 Попробовать снова</button>
             </div>
@@ -471,17 +469,26 @@ function getLoadingStatus() {
 // Функция для изменения настроек загрузки
 function configureLoading(options = {}) {
     // Валидные свойства конфигурации
-    const validOptions = ['showLoading', 'useSkeletonLoading', 'preloadCharts', 'fastSwitch'];
+    const validOptions = ['showLoading', 'useSkeletonLoading', 'preloadCharts', 'fastSwitch', 'preloadChartTypes'];
     const validatedOptions = {};
     
     // Проверяем каждое переданное свойство
     for (const [key, value] of Object.entries(options)) {
         if (validOptions.includes(key)) {
-            // Проверяем тип значения (должен быть boolean)
-            if (typeof value === 'boolean') {
-                validatedOptions[key] = value;
+            if (key === 'preloadChartTypes') {
+                // Проверяем что это массив строк
+                if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+                    validatedOptions[key] = value;
+                } else {
+                    console.warn(`Invalid value type for ${key}: expected array of strings, got ${typeof value}`);
+                }
             } else {
-                console.warn(`Invalid value type for ${key}: expected boolean, got ${typeof value}`);
+                // Проверяем тип значения (должен быть boolean для остальных свойств)
+                if (typeof value === 'boolean') {
+                    validatedOptions[key] = value;
+                } else {
+                    console.warn(`Invalid value type for ${key}: expected boolean, got ${typeof value}`);
+                }
             }
         } else {
             console.warn(`Unknown configuration option: ${key}. Valid options are: ${validOptions.join(', ')}`);
@@ -526,12 +533,29 @@ function enableSkeletonLoading() {
     });
 }
 
+// Быстрая настройка предзагружаемых графиков
+function setPreloadCharts(chartTypes) {
+    if (!Array.isArray(chartTypes)) {
+        console.warn('setPreloadCharts expects an array of chart types');
+        return;
+    }
+    
+    const validChartTypes = chartTypes.filter(type => chartEndpoints[type]);
+    if (validChartTypes.length !== chartTypes.length) {
+        const invalidTypes = chartTypes.filter(type => !chartEndpoints[type]);
+        console.warn('Invalid chart types ignored:', invalidTypes);
+    }
+    
+    configureLoading({ preloadChartTypes: validChartTypes });
+}
+
 // Сброс конфигурации к безопасным значениям по умолчанию
 function resetLoadingConfig() {
     loadingConfig.showLoading = true;
     loadingConfig.useSkeletonLoading = false;
     loadingConfig.preloadCharts = true;
     loadingConfig.fastSwitch = true;
+    loadingConfig.preloadChartTypes = ['total', 'daily'];
     console.log('Loading configuration reset to defaults:', loadingConfig);
 }
 
@@ -543,6 +567,7 @@ window.debugChartData = debugChartData;
 window.getLoadingStatus = getLoadingStatus;
 window.toggleDifficultyLevel = toggleDifficultyLevel;
 window.configureLoading = configureLoading;
+window.setPreloadCharts = setPreloadCharts;
 window.resetLoadingConfig = resetLoadingConfig;
 window.disableLoading = disableLoading;
 window.enableFastLoading = enableFastLoading;

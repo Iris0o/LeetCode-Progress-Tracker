@@ -592,17 +592,21 @@ h1 {
 
 /* Учитываем предпочтения пользователя по анимациям */
 @media (prefers-reduced-motion: reduce) {
-    /* Полностью отключаем анимации для пользователей с ограниченными возможностями */
-    *,
-    *::before,
-    *::after {
+    /* Отключаем анимации только для наших элементов, не затрагивая библиотеки */
+    .user-stat,
+    .tab-btn,
+    .difficulty-btn,
+    .refresh-btn,
+    .chart-loading,
+    .chart-skeleton,
+    .skeleton-chart,
+    .skeleton-header {
         animation-duration: 0s !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0s !important;
-        scroll-behavior: auto !important;
     }
     
-    /* Полностью отключаем анимации loading индикаторов */
+    /* Отключаем специфичные анимации */
     .chart-loading::before {
         animation: none !important;
     }
@@ -612,9 +616,10 @@ h1 {
         animation: none !important;
     }
     
-    /* Убираем hover эффекты */
+    /* Убираем hover эффекты для наших элементов */
     .user-stat:hover {
         transform: none !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
     }
     
     .tab-btn:hover {
@@ -623,5 +628,14 @@ h1 {
     
     .difficulty-btn:hover {
         transform: none !important;
+    }
+    
+    .refresh-btn:hover {
+        transform: none !important;
+    }
+    
+    /* Отключаем плавную прокрутку */
+    html {
+        scroll-behavior: auto !important;
     }
 }
