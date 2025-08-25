@@ -9,7 +9,9 @@ from config import CSV_FILE
 def load_and_process_data():
     """Загружает данные, преобразует их и вычисляет прогресс."""
     if not os.path.exists(CSV_FILE):
-        raise HTTPException(status_code=404, detail="Файл с данными не найден. Запустите скрипт обновления данных.")
+        raise HTTPException(
+            status_code=404,
+            detail="Файл с данными не найден. Запустите скрипт обновления данных.")
 
     try:
         # Загружаем все данные
@@ -20,16 +22,32 @@ def load_and_process_data():
         # Преобразуем строку с timestamp в объект datetime
         df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # Преобразуем в широкий формат для каждого типа метрик, если колонки есть, иначе пустые DataFrame
-        df_total = df.pivot_table(index='timestamp', columns='username', values='total_solved')
-        df_easy = df.pivot_table(index='timestamp', columns='username', values='easy_solved') if 'easy_solved' in df.columns else pd.DataFrame()
-        df_medium = df.pivot_table(index='timestamp', columns='username', values='medium_solved') if 'medium_solved' in df.columns else pd.DataFrame()
-        df_hard = df.pivot_table(index='timestamp', columns='username', values='hard_solved') if 'hard_solved' in df.columns else pd.DataFrame()
+        # Преобразуем в широкий формат для каждого типа метрик, если колонки
+        # есть, иначе пустые DataFrame
+        df_total = df.pivot_table(
+            index='timestamp',
+            columns='username',
+            values='total_solved')
+        df_easy = df.pivot_table(
+            index='timestamp',
+            columns='username',
+            values='easy_solved') if 'easy_solved' in df.columns else pd.DataFrame()
+        df_medium = df.pivot_table(
+            index='timestamp',
+            columns='username',
+            values='medium_solved') if 'medium_solved' in df.columns else pd.DataFrame()
+        df_hard = df.pivot_table(
+            index='timestamp',
+            columns='username',
+            values='hard_solved') if 'hard_solved' in df.columns else pd.DataFrame()
 
         if df_total.empty:
-            raise HTTPException(status_code=404, detail="Нет данных для обработки.")
+            raise HTTPException(
+                status_code=404,
+                detail="Нет данных для обработки.")
 
-        # Вычисляем прогресс относительно первого замера для каждого пользователя
+        # Вычисляем прогресс относительно первого замера для каждого
+        # пользователя
         def calculate_progress(col):
             if col.dropna().empty:
                 return col
@@ -39,9 +57,15 @@ def load_and_process_data():
         df_progress_total = df_total.apply(calculate_progress, axis=0)
 
         # Прогресс для каждого уровня сложности
-        df_progress_easy = df_easy.apply(calculate_progress, axis=0) if not df_easy.empty else pd.DataFrame()
-        df_progress_medium = df_medium.apply(calculate_progress, axis=0) if not df_medium.empty else pd.DataFrame()
-        df_progress_hard = df_hard.apply(calculate_progress, axis=0) if not df_hard.empty else pd.DataFrame()
+        df_progress_easy = df_easy.apply(
+            calculate_progress,
+            axis=0) if not df_easy.empty else pd.DataFrame()
+        df_progress_medium = df_medium.apply(
+            calculate_progress,
+            axis=0) if not df_medium.empty else pd.DataFrame()
+        df_progress_hard = df_hard.apply(
+            calculate_progress,
+            axis=0) if not df_hard.empty else pd.DataFrame()
 
         # Приводим все к float64
         df_total = df_total.astype('float64')
@@ -68,4 +92,5 @@ def load_and_process_data():
         print(f"Ошибка при обработке данных: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Ошибка обработки данных: {str(e)}")
+        raise HTTPException(status_code=500,
+                            detail=f"Ошибка обработки данных: {str(e)}")

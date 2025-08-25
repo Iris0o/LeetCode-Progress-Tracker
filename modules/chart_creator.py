@@ -11,7 +11,7 @@ from config import FIGURE_SIZE, PLOT_STYLE, MARKER_SIZE, TITLE_FONT_SIZE, AXIS_F
 def create_progress_plot_data(df):
     """Создает конфигурацию для интерактивного графика прогресса с ApexCharts."""
     series = []
-    
+
     for username in df.columns:
         # Убираем NaN значения для корректного отображения
         clean_data = df[username].dropna()
@@ -20,15 +20,16 @@ def create_progress_plot_data(df):
             data_points = []
             for timestamp, value in clean_data.items():
                 data_points.append({
-                    'x': int(timestamp.timestamp() * 1000),  # Timestamp в миллисекундах
+                    # Timestamp в миллисекундах
+                    'x': int(timestamp.timestamp() * 1000),
                     'y': float(value)
                 })
-            
+
             series.append({
                 'name': str(username),
                 'data': data_points
             })
-    
+
     # Конфигурация для ApexCharts
     chart_config = {
         'chart': {
@@ -73,14 +74,14 @@ def create_progress_plot_data(df):
             'position': 'top'
         }
     }
-    
+
     return chart_config
 
 
 def create_total_plot_data(df):
     """Создает конфигурацию для интерактивного графика общего количества задач с ApexCharts."""
     series = []
-    
+
     for username in df.columns:
         # Убираем NaN значения для корректного отображения
         clean_data = df[username].dropna()
@@ -89,15 +90,16 @@ def create_total_plot_data(df):
             data_points = []
             for timestamp, value in clean_data.items():
                 data_points.append({
-                    'x': int(timestamp.timestamp() * 1000),  # Timestamp в миллисекундах
+                    # Timestamp в миллисекундах
+                    'x': int(timestamp.timestamp() * 1000),
                     'y': float(value)
                 })
-            
+
             series.append({
                 'name': str(username),
                 'data': data_points
             })
-    
+
     # Конфигурация для ApexCharts
     chart_config = {
         'chart': {
@@ -142,7 +144,7 @@ def create_total_plot_data(df):
             'position': 'top'
         }
     }
-    
+
     return chart_config
 
 
@@ -152,20 +154,23 @@ def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
     easy_data = []
     medium_data = []
     hard_data = []
-    
+
     for username in df_easy.columns:
         if username in df_medium.columns and username in df_hard.columns:
             categories.append(str(username))
-            
+
             # Данные для последнего замера
-            latest_easy = df_easy[username].dropna().iloc[-1] if not df_easy[username].dropna().empty else 0
-            latest_medium = df_medium[username].dropna().iloc[-1] if not df_medium[username].dropna().empty else 0
-            latest_hard = df_hard[username].dropna().iloc[-1] if not df_hard[username].dropna().empty else 0
-            
+            latest_easy = df_easy[username].dropna(
+            ).iloc[-1] if not df_easy[username].dropna().empty else 0
+            latest_medium = df_medium[username].dropna(
+            ).iloc[-1] if not df_medium[username].dropna().empty else 0
+            latest_hard = df_hard[username].dropna(
+            ).iloc[-1] if not df_hard[username].dropna().empty else 0
+
             easy_data.append(float(latest_easy))
             medium_data.append(float(latest_medium))
             hard_data.append(float(latest_hard))
-    
+
     # Конфигурация для ApexCharts
     chart_config = {
         'chart': {
@@ -217,23 +222,23 @@ def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
             }
         }
     }
-    
+
     return chart_config
 
 
 def create_daily_progress_data(data_dict):
     """Создает конфигурацию для графика прогресса с группировкой по дням."""
     df_total = data_dict['total']
-    
+
     if df_total.empty:
         return {'series': [], 'chart': {'type': 'line'}}
-    
+
     # Группируем по дням
     df_daily = df_total.groupby(df_total.index.date).last()
     df_daily.index = pd.to_datetime(df_daily.index)
-    
+
     series = []
-    
+
     for username in df_daily.columns:
         clean_data = df_daily[username].dropna()
         if not clean_data.empty:
@@ -243,12 +248,12 @@ def create_daily_progress_data(data_dict):
                     'x': int(timestamp.timestamp() * 1000),
                     'y': float(value)
                 })
-            
+
             series.append({
                 'name': str(username),
                 'data': data_points
             })
-    
+
     chart_config = {
         'chart': {
             'type': 'line',
@@ -289,27 +294,27 @@ def create_daily_progress_data(data_dict):
             'position': 'top'
         }
     }
-    
+
     return chart_config
 
 
 def create_difficulty_total_data(df_easy, df_medium, df_hard):
     """Создает конфигурацию для графика общего количества задач по каждому уровню сложности."""
     series = []
-    
+
     colors = {
         'easy': '#4CAF50',
         'medium': '#FF9800',
         'hard': '#F44336'
     }
-    
+
     # Добавляем данные для каждого уровня сложности
     difficulty_data = [
         (df_easy, 'Easy', colors['easy']),
         (df_medium, 'Medium', colors['medium']),
         (df_hard, 'Hard', colors['hard'])
     ]
-    
+
     for df, level, color in difficulty_data:
         if not df.empty:
             for username in df.columns:
@@ -321,13 +326,13 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard):
                             'x': int(timestamp.timestamp() * 1000),
                             'y': float(value)
                         })
-                    
+
                     series.append({
                         'name': f'{username} ({level})',
                         'data': data_points,
                         'color': color
                     })
-    
+
     chart_config = {
         'chart': {
             'type': 'line',
@@ -371,27 +376,28 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard):
             }
         }
     }
-    
+
     return chart_config
 
 
-def create_difficulty_progress_data(df_progress_easy, df_progress_medium, df_progress_hard):
+def create_difficulty_progress_data(
+        df_progress_easy, df_progress_medium, df_progress_hard):
     """Создает конфигурацию для графика прогресса по каждому уровню сложности."""
     series = []
-    
+
     colors = {
         'easy': '#4CAF50',
         'medium': '#FF9800',
         'hard': '#F44336'
     }
-    
+
     # Добавляем данные для каждого уровня сложности
     difficulty_data = [
         (df_progress_easy, 'Easy', colors['easy']),
         (df_progress_medium, 'Medium', colors['medium']),
         (df_progress_hard, 'Hard', colors['hard'])
     ]
-    
+
     for df, level, color in difficulty_data:
         if not df.empty:
             for username in df.columns:
@@ -403,13 +409,13 @@ def create_difficulty_progress_data(df_progress_easy, df_progress_medium, df_pro
                             'x': int(timestamp.timestamp() * 1000),
                             'y': float(value)
                         })
-                    
+
                     series.append({
                         'name': f'{username} ({level})',
                         'data': data_points,
                         'color': color
                     })
-    
+
     chart_config = {
         'chart': {
             'type': 'line',
@@ -453,27 +459,27 @@ def create_difficulty_progress_data(df_progress_easy, df_progress_medium, df_pro
             }
         }
     }
-    
+
     return chart_config
 
 
 def create_weekly_heatmap_data(data_dict):
     """Создает конфигурацию для тепловой карты активности по дням недели и часам."""
     df_total = data_dict['total']
-    
+
     if df_total.empty:
         return {'series': [], 'chart': {'type': 'heatmap'}}
-    
+
     # Создаем DataFrame для всех пользователей с временными метками
     activity_data = []
-    
+
     for username in df_total.columns:
         user_data = df_total[username].dropna()
         if not user_data.empty:
             # Вычисляем разности (активность)
             activity = user_data.diff().fillna(0)
             activity = activity[activity > 0]  # Только положительные изменения
-            
+
             for timestamp, value in activity.items():
                 activity_data.append({
                     'username': username,
@@ -483,36 +489,44 @@ def create_weekly_heatmap_data(data_dict):
                     'day_of_week': timestamp.strftime('%A'),
                     'weekday': timestamp.weekday()
                 })
-    
+
     if not activity_data:
         return {'series': [], 'chart': {'type': 'heatmap'}}
-    
+
     activity_df = pd.DataFrame(activity_data)
-    
+
     # Группируем по дням недели и часам
-    heatmap_data = activity_df.groupby(['day_of_week', 'weekday', 'hour'])['activity'].sum().reset_index()
-    
+    heatmap_data = activity_df.groupby(['day_of_week', 'weekday', 'hour'])[
+        'activity'].sum().reset_index()
+
     # Создаем серии данных для тепловой карты
-    days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    days_order = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday']
     series = []
-    
+
     for day in days_order:
         day_data = []
         for hour in range(24):
             activity = heatmap_data[
-                (heatmap_data['day_of_week'] == day) & 
+                (heatmap_data['day_of_week'] == day) &
                 (heatmap_data['hour'] == hour)
             ]['activity'].sum()
             day_data.append({
                 'x': f'{hour}:00',
                 'y': float(activity)
             })
-        
+
         series.append({
             'name': day,
             'data': day_data
         })
-    
+
     chart_config = {
         'chart': {
             'type': 'heatmap',
@@ -560,7 +574,7 @@ def create_weekly_heatmap_data(data_dict):
             }
         }
     }
-    
+
     return chart_config
 
 
@@ -570,26 +584,37 @@ def create_progress_plot(df):
     fig, ax = plt.subplots(figsize=FIGURE_SIZE)
 
     for username in df.columns:
-        ax.plot(df.index, df[username], marker='o', linestyle='-', markersize=MARKER_SIZE, label=username)
+        ax.plot(
+            df.index,
+            df[username],
+            marker='o',
+            linestyle='-',
+            markersize=MARKER_SIZE,
+            label=username)
 
-    ax.set_title('Прогресс на LeetCode (с начала отслеживания)', fontsize=TITLE_FONT_SIZE, pad=20)
+    ax.set_title(
+        'Прогресс на LeetCode (с начала отслеживания)',
+        fontsize=TITLE_FONT_SIZE,
+        pad=20)
     ax.set_xlabel('Дата и время', fontsize=AXIS_FONT_SIZE)
-    ax.set_ylabel('Решено задач (относительно старта)', fontsize=AXIS_FONT_SIZE)
+    ax.set_ylabel(
+        'Решено задач (относительно старта)',
+        fontsize=AXIS_FONT_SIZE)
     ax.legend(title='Участники', fontsize=LEGEND_FONT_SIZE)
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
     # Улучшенное форматирование оси X
     fig.autofmt_xdate(rotation=30, ha='right')
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-    
+
     plt.tight_layout()
-    
+
     # Сохраняем график в BytesIO
     img = io.BytesIO()
     plt.savefig(img, format='png', dpi=150)
     img.seek(0)
     plt.close()  # Важно закрыть фигуру для освобождения памяти
-    
+
     return img
 
 
@@ -599,9 +624,18 @@ def create_total_plot(df):
     fig, ax = plt.subplots(figsize=FIGURE_SIZE)
 
     for username in df.columns:
-        ax.plot(df.index, df[username], marker='o', linestyle='-', markersize=MARKER_SIZE, label=username)
+        ax.plot(
+            df.index,
+            df[username],
+            marker='o',
+            linestyle='-',
+            markersize=MARKER_SIZE,
+            label=username)
 
-    ax.set_title('Общее количество решенных задач на LeetCode', fontsize=TITLE_FONT_SIZE, pad=20)
+    ax.set_title(
+        'Общее количество решенных задач на LeetCode',
+        fontsize=TITLE_FONT_SIZE,
+        pad=20)
     ax.set_xlabel('Дата и время', fontsize=AXIS_FONT_SIZE)
     ax.set_ylabel('Общее количество решенных задач', fontsize=AXIS_FONT_SIZE)
     ax.legend(title='Участники', fontsize=LEGEND_FONT_SIZE)
@@ -610,13 +644,13 @@ def create_total_plot(df):
     # Улучшенное форматирование оси X
     fig.autofmt_xdate(rotation=30, ha='right')
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
-    
+
     plt.tight_layout()
-    
+
     # Сохраняем график в BytesIO
     img = io.BytesIO()
     plt.savefig(img, format='png', dpi=150)
     img.seek(0)
     plt.close()
-    
+
     return img
