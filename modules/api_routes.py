@@ -14,6 +14,15 @@ from modules.chart_creator import (
 )
 from config import USERNAMES
 
+
+def get_latest_value(dataframe, username):
+    """Получить последнее значение для пользователя из DataFrame."""
+    if (dataframe.empty or 
+        username not in dataframe.columns or 
+        dataframe[username].dropna().empty):
+        return 0
+    return dataframe[username].dropna().iloc[-1]
+
 # Создаем роутер для API
 api_router = APIRouter(prefix="/api")
 
@@ -206,9 +215,9 @@ async def get_stats():
                 }
                 
                 # Добавляем детализацию по сложности, если доступна
-                latest_easy = data_dict['easy'][username].dropna().iloc[-1] if not data_dict['easy'].empty and username in data_dict['easy'].columns and not data_dict['easy'][username].dropna().empty else 0
-                latest_medium = data_dict['medium'][username].dropna().iloc[-1] if not data_dict['medium'].empty and username in data_dict['medium'].columns and not data_dict['medium'][username].dropna().empty else 0
-                latest_hard = data_dict['hard'][username].dropna().iloc[-1] if not data_dict['hard'].empty and username in data_dict['hard'].columns and not data_dict['hard'][username].dropna().empty else 0
+                latest_easy = get_latest_value(data_dict['easy'], username)
+                latest_medium = get_latest_value(data_dict['medium'], username)
+                latest_hard = get_latest_value(data_dict['hard'], username)
                 
                 user_stats.update({
                     'easy_solved': int(latest_easy),
@@ -238,7 +247,9 @@ async def get_stats():
             'stats': stats,
             'last_update': last_update,
             'total_users': len(USERNAMES),
-            'has_difficulty_data': not data_dict['easy'].empty or not data_dict['medium'].empty or not data_dict['hard'].empty
+            'has_difficulty_data': (not data_dict['easy'].empty or 
+                                  not data_dict['medium'].empty or 
+                                  not data_dict['hard'].empty)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ошибка получения статистики: {str(e)}")
