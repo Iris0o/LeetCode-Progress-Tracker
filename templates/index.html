@@ -12,10 +12,8 @@
         <div class="header">
             <h1>📊 {{ translations.title }}</h1>
             <div class="language-switcher">
-                <button class="language-btn" onclick="switchLanguage('ru')" 
-                        {% if current_language == 'ru' %}class="active"{% endif %}>🇷🇺 RU</button>
-                <button class="language-btn" onclick="switchLanguage('en')" 
-                        {% if current_language == 'en' %}class="active"{% endif %}>🇺🇸 EN</button>
+                <button class="language-btn{% if current_language == 'ru' %} active{% endif %}" onclick="switchLanguage('ru')">🇷🇺 RU</button>
+                <button class="language-btn{% if current_language == 'en' %} active{% endif %}" onclick="switchLanguage('en')">🇺🇸 EN</button>
             </div>
         </div>
         
