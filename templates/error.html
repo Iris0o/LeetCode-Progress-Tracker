@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ current_language if current_language is defined else 'ru' }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ошибка - LeetCode Progress Tracker</title>
+    <title>{% if translations and translations.errors %}{{ translations.errors.loading_error }}{% else %}Ошибка{% endif %} - {% if translations %}{{ translations.title }}{% else %}LeetCode Progress Tracker{% endif %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         .error-container {
@@ -44,10 +44,10 @@
 <body>
     <div class="error-container">
         <div class="error-icon">⚠️</div>
-        <h1 class="error-title">Произошла ошибка</h1>
+        <h1 class="error-title">{% if translations and translations.errors %}{{ translations.errors.loading_error }}{% else %}Произошла ошибка{% endif %}</h1>
         <p class="error-message">{{ error_message }}</p>
         <p class="error-message">{{ suggestion }}</p>
-        <a href="/" class="btn-home">🏠 Вернуться на главную</a>
+        <a href="/" class="btn-home">🏠 {% if translations and current_language == 'en' %}Back to Home{% else %}Вернуться на главную{% endif %}</a>
     </div>
 </body>
 </html>

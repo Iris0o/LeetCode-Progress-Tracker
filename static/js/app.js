@@ -3,9 +3,124 @@
 // Константы конфигурации
 const CHART_LOAD_TIMEOUT = 10000; // 10 секунд
 
+// Переводы и интернационализация
+let currentTranslations = window.translations || {};
+let currentLanguage = window.currentLanguage || 'ru';
+
 // Утилитарные функции
 function getErrorMessage(error) {
-    return error?.message || error?.toString() || 'Неизвестная ошибка';
+    // Используем систему переводов для сообщений об ошибках
+    const fallbackMessage = getTranslation('errors.unknown_error') || 
+                           (currentLanguage === 'en' ? 'Unknown error' : 'Неизвестная ошибка');
+    
+    if (currentTranslations.errors && currentTranslations.errors.unknown_error) {
+        return error?.message || error?.toString() || currentTranslations.errors.unknown_error;
+    }
+    
+    return error?.message || error?.toString() || fallbackMessage;
+}
+
+// Функция для переключения языка
+async function switchLanguage(language) {
+    if (!window.supportedLanguages || !window.supportedLanguages.includes(language)) {
+        console.error('Неподдерживаемый язык:', language);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/language', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `language=${language}`
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            
+            // Обновляем переводы
+            currentTranslations = result.translations;
+            currentLanguage = language;
+            
+            // Обновляем глобальные переменные
+            window.translations = result.translations;
+            window.currentLanguage = language;
+            
+            // Обновляем переводы на странице
+            updatePageTranslations();
+            
+            // Обновляем активную кнопку
+            updateLanguageButtons(language);
+            
+            // Очищаем кэш графиков для перезагрузки с новыми переводами
+            clearChartsCache();
+            
+            // Перезагружаем активный график
+            const activeTab = document.querySelector('.tab-btn.active');
+            if (activeTab) {
+                const chartType = activeTab.dataset.chart;
+                loadChart(chartType);
+            }
+            
+            console.log('Язык успешно изменен на:', language);
+        } else {
+            console.error('Ошибка при смене языка:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Ошибка сети при смене языка:', error);
+    }
+}
+
+// Функция для обновления переводов на странице
+function updatePageTranslations() {
+    const elementsToTranslate = document.querySelectorAll('[data-translate]');
+    
+    elementsToTranslate.forEach(element => {
+        const translationKey = element.getAttribute('data-translate');
+        const translation = getTranslation(translationKey);
+        
+        if (translation !== translationKey) {
+            element.textContent = translation;
+        }
+    });
+    
+    // Обновляем заголовок документа
+    document.title = getTranslation('title');
+    
+    // Обновляем lang атрибут HTML
+    document.documentElement.lang = currentLanguage;
+}
+
+// Функция для получения перевода
+function getTranslation(key) {
+    const keys = key.split('.');
+    let translation = currentTranslations;
+    
+    try {
+        for (const k of keys) {
+            translation = translation[k];
+        }
+        return translation || key;
+    } catch (error) {
+        return key;
+    }
+}
+
+// Функция для обновления активной кнопки языка
+function updateLanguageButtons(language) {
+    const languageButtons = document.querySelectorAll('.language-btn');
+    
+    languageButtons.forEach(button => {
+        button.classList.remove('active');
+        // Проверяем и по тексту кнопки, и по атрибуту onclick
+        const btnLang = button.textContent.includes('RU') ? 'ru' : 'en';
+        if (btnLang === language || 
+            button.textContent.toLowerCase().includes(language.toLowerCase()) || 
+            button.getAttribute('onclick')?.includes(language)) {
+            button.classList.add('active');
+        }
+    });
 }
 
 // Конфигурация загрузки
@@ -78,6 +193,17 @@ function processLoadQueue() {
         const nextTask = loadQueue.shift();
         nextTask();
     }
+}
+
+// Функция для очистки кэша графиков
+function clearChartsCache() {
+    // Очищаем кэш графиков для перезагрузки с новыми переводами
+    Object.keys(chartsCache).forEach(chartType => {
+        if (chartsCache[chartType]) {
+            chartsCache[chartType].destroy();
+            delete chartsCache[chartType];
+        }
+    });
 }
 
 // Инициализация приложения
@@ -260,11 +386,16 @@ async function loadChart(chartType) {
     } catch (error) {
         console.error(`Error loading chart ${chartType}:`, error);
         
+        const errorTitle = getTranslation('errors.chart_loading_error') || 
+                          (currentLanguage === 'en' ? 'Chart loading error:' : 'Ошибка загрузки графика:');
+        const retryText = getTranslation('buttons.retry') || 
+                         (currentLanguage === 'en' ? '🔄 Try again' : '🔄 Попробовать снова');
+        
         container.innerHTML = `
             <div class="chart-error">
-                ❌ Ошибка загрузки графика: ${getErrorMessage(error)}
+                ❌ ${errorTitle} ${getErrorMessage(error)}
                 <br>
-                <button onclick="loadChart('${chartType}')" class="retry-btn">🔄 Попробовать снова</button>
+                <button onclick="loadChart('${chartType}')" class="retry-btn">${retryText}</button>
             </div>
         `;
         return null;
@@ -375,7 +506,9 @@ async function updateData() {
         }
     } catch (error) {
         console.error('Update request failed:', error);
-        message.innerHTML = '<p class="error">❌ Ошибка сети: ' + error.message + '</p>';
+        const errorMsg = getTranslation('errors.network_error') || 
+                        (currentLanguage === 'en' ? 'Network error:' : 'Ошибка сети:');
+        message.innerHTML = `<p class="error">❌ ${errorMsg} ${error.message}</p>`;
     } finally {
         updateBtn.disabled = false;
         loading.style.display = 'none';
@@ -560,6 +693,7 @@ function resetLoadingConfig() {
 }
 
 // Экспорт функций для глобального доступа
+// Экспорт функций для глобального доступа
 window.updateData = updateData;
 window.loadChart = loadChart;
 window.safeLoadChart = safeLoadChart;
@@ -573,3 +707,10 @@ window.disableLoading = disableLoading;
 window.enableFastLoading = enableFastLoading;
 window.enableSkeletonLoading = enableSkeletonLoading;
 window.cleanupTooltips = cleanupTooltips;
+window.clearChartsCache = clearChartsCache;
+
+// Экспорт функций мультиязычности (функции определены выше)
+window.switchLanguage = switchLanguage;
+window.updatePageTranslations = updatePageTranslations;
+window.getTranslation = getTranslation;
+window.updateLanguageButtons = updateLanguageButtons;

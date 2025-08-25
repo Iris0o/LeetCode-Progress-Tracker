@@ -6,10 +6,14 @@ import matplotlib.dates as mdates
 import io
 from datetime import datetime
 from config import FIGURE_SIZE, PLOT_STYLE, MARKER_SIZE, TITLE_FONT_SIZE, AXIS_FONT_SIZE, LEGEND_FONT_SIZE
+from modules.i18n import i18n
 
 
-def create_progress_plot_data(df):
+def create_progress_plot_data(df, language="ru"):
     """Создает конфигурацию для интерактивного графика прогресса с ApexCharts."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     series = []
 
     for username in df.columns:
@@ -46,16 +50,16 @@ def create_progress_plot_data(df):
         'xaxis': {
             'type': 'datetime',
             'title': {
-                'text': 'Дата и время'
+                'text': i18n.translate('charts.axes.date_time')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Решено задач (относительно старта)'
+                'text': i18n.translate('charts.axes.solved_relative')
             }
         },
         'title': {
-            'text': 'Прогресс на LeetCode (с начала отслеживания)',
+            'text': i18n.translate('charts.progress_title'),
             'align': 'center'
         },
         'stroke': {
@@ -78,8 +82,11 @@ def create_progress_plot_data(df):
     return chart_config
 
 
-def create_total_plot_data(df):
+def create_total_plot_data(df, language="ru"):
     """Создает конфигурацию для интерактивного графика общего количества задач с ApexCharts."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     series = []
 
     for username in df.columns:
@@ -116,16 +123,16 @@ def create_total_plot_data(df):
         'xaxis': {
             'type': 'datetime',
             'title': {
-                'text': 'Дата и время'
+                'text': i18n.translate('charts.axes.date_time')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Общее количество решенных задач'
+                'text': i18n.translate('charts.axes.total_solved')
             }
         },
         'title': {
-            'text': 'Общее количество решенных задач на LeetCode',
+            'text': i18n.translate('charts.total_title'),
             'align': 'center'
         },
         'stroke': {
@@ -148,8 +155,11 @@ def create_total_plot_data(df):
     return chart_config
 
 
-def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
+def create_difficulty_breakdown_data(df_easy, df_medium, df_hard, language="ru"):
     """Создает конфигурацию для интерактивного графика распределения задач по уровням сложности."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     categories = []
     easy_data = []
     medium_data = []
@@ -183,17 +193,17 @@ def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
         },
         'series': [
             {
-                'name': 'Easy',
+                'name': i18n.translate('charts.series_labels.easy'),
                 'data': easy_data,
                 'color': '#4CAF50'
             },
             {
-                'name': 'Medium',
+                'name': i18n.translate('charts.series_labels.medium'),
                 'data': medium_data,
                 'color': '#FF9800'
             },
             {
-                'name': 'Hard',
+                'name': i18n.translate('charts.series_labels.hard'),
                 'data': hard_data,
                 'color': '#F44336'
             }
@@ -201,16 +211,16 @@ def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
         'xaxis': {
             'categories': categories,
             'title': {
-                'text': 'Пользователи'
+                'text': i18n.translate('charts.axes.users')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Количество задач'
+                'text': i18n.translate('charts.axes.tasks_count')
             }
         },
         'title': {
-            'text': 'Распределение решенных задач по уровням сложности',
+            'text': i18n.translate('charts.difficulty_breakdown_title'),
             'align': 'center'
         },
         'legend': {
@@ -226,8 +236,11 @@ def create_difficulty_breakdown_data(df_easy, df_medium, df_hard):
     return chart_config
 
 
-def create_daily_progress_data(data_dict):
+def create_daily_progress_data(data_dict, language="ru"):
     """Создает конфигурацию для графика прогресса с группировкой по дням."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     df_total = data_dict['total']
 
     if df_total.empty:
@@ -266,16 +279,16 @@ def create_daily_progress_data(data_dict):
         'xaxis': {
             'type': 'datetime',
             'title': {
-                'text': 'Дата'
+                'text': i18n.translate('charts.axes.date')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Общее количество решенных задач'
+                'text': i18n.translate('charts.axes.total_solved')
             }
         },
         'title': {
-            'text': 'Прогресс по дням',
+            'text': i18n.translate('charts.daily_title'),
             'align': 'center'
         },
         'stroke': {
@@ -298,8 +311,11 @@ def create_daily_progress_data(data_dict):
     return chart_config
 
 
-def create_difficulty_total_data(df_easy, df_medium, df_hard):
+def create_difficulty_total_data(df_easy, df_medium, df_hard, language="ru"):
     """Создает конфигурацию для графика общего количества задач по каждому уровню сложности."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     series = []
 
     colors = {
@@ -345,16 +361,16 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard):
         'xaxis': {
             'type': 'datetime',
             'title': {
-                'text': 'Дата и время'
+                'text': i18n.translate('charts.axes.date_time')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Общее количество решенных задач'
+                'text': i18n.translate('charts.axes.total_solved')
             }
         },
         'title': {
-            'text': 'Общее количество задач по уровням сложности',
+            'text': i18n.translate('charts.difficulty_total_title'),
             'align': 'center'
         },
         'stroke': {
@@ -381,8 +397,11 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard):
 
 
 def create_difficulty_progress_data(
-        df_progress_easy, df_progress_medium, df_progress_hard):
+        df_progress_easy, df_progress_medium, df_progress_hard, language="ru"):
     """Создает конфигурацию для графика прогресса по каждому уровню сложности."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     series = []
 
     colors = {
@@ -428,16 +447,16 @@ def create_difficulty_progress_data(
         'xaxis': {
             'type': 'datetime',
             'title': {
-                'text': 'Дата и время'
+                'text': i18n.translate('charts.axes.date_time')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'Прогресс решенных задач (относительно старта)'
+                'text': i18n.translate('charts.axes.progress_relative')
             }
         },
         'title': {
-            'text': 'Прогресс по уровням сложности (с начала отслеживания)',
+            'text': i18n.translate('charts.difficulty_progress_title'),
             'align': 'center'
         },
         'stroke': {
@@ -463,8 +482,11 @@ def create_difficulty_progress_data(
     return chart_config
 
 
-def create_weekly_heatmap_data(data_dict):
+def create_weekly_heatmap_data(data_dict, language="ru"):
     """Создает конфигурацию для тепловой карты активности по дням недели и часам."""
+    # Устанавливаем язык для переводов
+    i18n.set_language(language)
+    
     df_total = data_dict['total']
 
     if df_total.empty:
@@ -538,16 +560,16 @@ def create_weekly_heatmap_data(data_dict):
         'series': series,
         'xaxis': {
             'title': {
-                'text': 'Час дня'
+                'text': i18n.translate('charts.axes.hour_of_day')
             }
         },
         'yaxis': {
             'title': {
-                'text': 'День недели'
+                'text': i18n.translate('charts.axes.day_of_week')
             }
         },
         'title': {
-            'text': 'Тепловая карта активности по дням недели и часам',
+            'text': i18n.translate('charts.heatmap_title'),
             'align': 'center'
         },
         'plotOptions': {

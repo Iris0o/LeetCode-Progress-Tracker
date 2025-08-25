@@ -1,11 +1,12 @@
 """Веб-страницы для LeetCode Progress Tracker."""
 
-from fastapi import Request, APIRouter
+from fastapi import Request, APIRouter, Cookie
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from modules.data_processor import load_and_process_data
 from modules.utils import get_latest_value
+from modules.i18n import i18n
 from config import USERNAMES
 
 templates = Jinja2Templates(directory="templates")
@@ -16,8 +17,11 @@ web_router = APIRouter()
 
 
 @web_router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request, lang: str = Cookie(default="ru")):
     """Главная страница с графиками."""
+    # Устанавливаем язык из cookie
+    i18n.set_language(lang if lang in i18n.get_supported_languages() else "ru")
+    
     try:
         data_dict = load_and_process_data()
 
@@ -76,7 +80,7 @@ async def index(request: Request):
             last_update = data_dict['total'].index[-1].strftime(
                 '%Y-%m-%d %H:%M:%S')
         else:
-            last_update = "Нет данных"
+            last_update = i18n.translate("errors.no_data")
 
         return templates.TemplateResponse("index.html", {
             "request": request,
@@ -84,12 +88,17 @@ async def index(request: Request):
             "last_update": last_update,
             "has_difficulty_data": (not data_dict['easy'].empty or
                                     not data_dict['medium'].empty or
-                                    not data_dict['hard'].empty)
+                                    not data_dict['hard'].empty),
+            "translations": i18n.get_all_translations(),
+            "current_language": i18n.get_language(),
+            "supported_languages": i18n.get_supported_languages()
         })
 
     except Exception as e:
         return templates.TemplateResponse("error.html", {
             "request": request,
-            "error_message": f"Произошла ошибка при загрузке данных: {str(e)}",
-            "suggestion": "Убедитесь, что скрипт обновления данных был запущен хотя бы один раз."
+            "error_message": f"{i18n.translate('errors.loading_error')} {str(e)}",
+            "suggestion": i18n.translate("errors.suggestion"),
+            "translations": i18n.get_all_translations(),
+            "current_language": i18n.get_language()
         })
