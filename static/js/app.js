@@ -2,6 +2,8 @@
 
 // Константы конфигурации
 const CHART_LOAD_TIMEOUT = 10000; // 10 секунд
+const LEGEND_CLICK_DELAY = 0; // Задержка для обновления аннотаций после клика по легенде
+const ANNOTATION_UPDATE_DELAY = 0; // Задержка для обновления аннотаций
 
 // Переводы и интернационализация
 let currentTranslations = window.translations || {};
@@ -386,10 +388,10 @@ async function loadChart(chartType) {
         
         // Добавляем обработчики событий для синхронизации аннотаций с легендой
         chart.addEventListener('legendClick', function(chartContext, seriesIndex, config) {
-            // Небольшая задержка, чтобы ApexCharts успел обновить состояние серий
+            // Используем константу для задержки обновления аннотаций
             setTimeout(() => {
                 updateAnnotationsLocally(chartType, chart);
-            }, 100);
+            }, LEGEND_CLICK_DELAY);
         });
         
         // Сохраняем в кэш
@@ -571,7 +573,9 @@ function toggleDifficultyLevel(chartType, difficulty) {
     }
     
     // Обновляем аннотации - скрываем/показываем соответствующие подписи
-    updateAnnotationsVisibility(chart, chartType);
+    setTimeout(() => {
+        updateAnnotationsLocally(chartType, chart);
+    }, ANNOTATION_UPDATE_DELAY);
 }
 
 // Функция для локального обновления аннотаций без запроса к серверу
@@ -604,9 +608,9 @@ function updateAnnotationsLocally(chartType, chart) {
     
     // Фильтруем аннотации локально
     const filteredAnnotations = originalAnns.filter(annotation => {
-        // Проверяем скрытие через легенду
+        // Проверяем скрытие через легенду (убираем избыточное условие)
         const isHiddenByLegend = hiddenSeriesNames.some(hiddenName => 
-            annotation.label.text === hiddenName || hiddenName === annotation.label.text
+            annotation.label.text === hiddenName
         );
         
         // Проверяем скрытие через кнопки сложности
@@ -625,104 +629,10 @@ function updateAnnotationsLocally(chartType, chart) {
     }, false, true); // false - не перерисовывать, true - updateSeries
 }
 
-// Функция для обновления аннотаций при переключении через легенду
+// Функция для обновления аннотаций при переключении через легенду (устаревшая - используем updateAnnotationsLocally)
 async function updateAnnotationsForLegendToggle(chartType, chart) {
-    const endpoint = chartEndpoints[chartType];
-    const containerId = chartContainers[chartType];
-    
-    if (!endpoint || !containerId) {
-        return;
-    }
-    
-    const container = document.getElementById(containerId);
-    if (!container) {
-        return;
-    }
-    
-    try {
-        // Получаем список скрытых серий
-        const hiddenSeriesIndices = chart.w.globals.collapsedSeriesIndices || [];
-        const hiddenSeriesNames = hiddenSeriesIndices.map(index => 
-            chart.w.globals.seriesNames[index]
-        );
-        
-        // Получаем оригинальную конфигурацию графика
-        const response = await fetch(endpoint);
-        if (!response.ok) {
-            throw new Error(`HTTP ошибка: ${response.status}`);
-        }
-        
-        const chartConfig = await response.json();
-        
-        // Фильтруем аннотации - убираем те, которые соответствуют скрытым сериям
-        if (chartConfig.annotations && chartConfig.annotations.points) {
-            chartConfig.annotations.points = chartConfig.annotations.points.filter(annotation => {
-                // For difficulty charts: check if annotation text matches hidden series names
-                const isHiddenInDifficultyChart = hiddenSeriesNames.some(hiddenName => 
-                    annotation.label.text === hiddenName
-                );
-                
-                // For regular charts: check if annotation text (username) matches hidden series
-                const isHiddenInRegularChart = hiddenSeriesNames.some(hiddenName => 
-                    hiddenName === annotation.label.text
-                );
-                
-                return !isHiddenInDifficultyChart && !isHiddenInRegularChart;
-            });
-        }
-        
-        // Уничтожаем старый график
-        if (chartsCache[chartType]) {
-            chartsCache[chartType].destroy();
-        }
-        
-        // Создаем новый график с обновленными аннотациями
-        const newChart = new ApexCharts(container, chartConfig);
-        await newChart.render();
-        
-        // Добавляем обработчик событий для нового графика
-        newChart.addEventListener('legendClick', function(chartContext, seriesIndex, config) {
-            setTimeout(() => {
-                updateAnnotationsForLegendToggle(chartType, newChart);
-            }, 100);
-        });
-        
-        // Обновляем кэш
-        chartsCache[chartType] = newChart;
-        
-        // Восстанавливаем состояние скрытых серий
-        hiddenSeriesIndices.forEach(index => {
-            if (newChart.w.globals.seriesNames[index]) {
-                newChart.hideSeries(newChart.w.globals.seriesNames[index]);
-            }
-        });
-        
-        // Если это график с кнопками управления сложностью, восстанавливаем их состояние
-        if (chartType === 'difficulty-total' || chartType === 'difficulty-progress') {
-            initializeDifficultyControls(chartType);
-            
-            // Восстанавливаем состояние кнопок на основе скрытых серий
-            const chartContainer = document.getElementById(`${chartType}-chart`);
-            const buttons = chartContainer.querySelectorAll('.difficulty-btn');
-            
-            buttons.forEach(button => {
-                const difficulty = button.getAttribute('data-difficulty');
-                const difficultyLevel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-                
-                // Проверяем, есть ли скрытые серии этого уровня сложности
-                const hasHiddenSeriesOfThisDifficulty = hiddenSeriesNames.some(name => 
-                    name.includes(`(${difficultyLevel})`)
-                );
-                
-                if (hasHiddenSeriesOfThisDifficulty) {
-                    button.classList.remove('active');
-                }
-            });
-        }
-        
-    } catch (error) {
-        console.error(`Error updating annotations for legend toggle in ${chartType}:`, error);
-    }
+    // Используем более эффективное локальное обновление
+    updateAnnotationsLocally(chartType, chart);
 }
 
 // Функция для обновления видимости аннотаций на основе видимых серий
@@ -731,88 +641,20 @@ function updateAnnotationsVisibility(chart, chartType) {
         return;
     }
     
-    // Используем локальное обновление вместо полной перезагрузки
+    // Используем более эффективное локальное обновление
     updateAnnotationsLocally(chartType, chart);
 }
 
-// Функция для перезагрузки графика с обновленными аннотациями
+// Функция для перезагрузки графика с обновленными аннотациями (рефакторена для эффективности)
 async function reloadChartWithUpdatedAnnotations(chartType, visibleSeries) {
-    const endpoint = chartEndpoints[chartType];
-    const containerId = chartContainers[chartType];
-    
-    if (!endpoint || !containerId) {
+    const chart = chartsCache[chartType];
+    if (!chart) {
+        console.error(`Chart ${chartType} not found in cache`);
         return;
     }
-    
-    const container = document.getElementById(containerId);
-    if (!container) {
-        return;
-    }
-    
-    try {
-        // Получаем оригинальную конфигурацию графика
-        const response = await fetch(endpoint);
-        if (!response.ok) {
-            throw new Error(`HTTP ошибка: ${response.status}`);
-        }
-        
-        const chartConfig = await response.json();
-        
-        // Получаем активные кнопки для определения скрытых уровней сложности
-        const chartContainer = document.getElementById(`${chartType}-chart`);
-        const buttons = chartContainer.querySelectorAll('.difficulty-btn');
-        const hiddenDifficulties = [];
-        
-        buttons.forEach(button => {
-            if (!button.classList.contains('active')) {
-                const difficulty = button.getAttribute('data-difficulty');
-                const difficultyLevel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-                hiddenDifficulties.push(difficultyLevel);
-            }
-        });
-        
-        // Фильтруем аннотации - убираем те, которые соответствуют скрытым уровням сложности
-        if (chartConfig.annotations && chartConfig.annotations.points) {
-            chartConfig.annotations.points = chartConfig.annotations.points.filter(annotation => {
-                // Проверяем, содержит ли текст аннотации скрытый уровень сложности
-                return !hiddenDifficulties.some(hiddenLevel => 
-                    annotation.label.text.includes(`(${hiddenLevel})`)
-                );
-            });
-        }
-        
-        // Уничтожаем старый график
-        if (chartsCache[chartType]) {
-            chartsCache[chartType].destroy();
-        }
-        
-        // Создаем новый график с обновленными аннотациями
-        const chart = new ApexCharts(container, chartConfig);
-        await chart.render();
-        
-        // Обновляем кэш
-        chartsCache[chartType] = chart;
-        
-        // Применяем состояние кнопок (какие серии должны быть скрыты)
-        buttons.forEach(button => {
-            const difficulty = button.getAttribute('data-difficulty');
-            const difficultyLevel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-            const isActive = button.classList.contains('active');
-            
-            if (!isActive) {
-                // Если кнопка неактивна, скрываем соответствующие серии
-                const seriesToHide = chart.w.globals.seriesNames.filter(name => 
-                    name.includes(`(${difficultyLevel})`)
-                );
-                seriesToHide.forEach(seriesName => {
-                    chart.hideSeries(seriesName);
-                });
-            }
-        });
-        
-    } catch (error) {
-        console.error(`Error reloading chart ${chartType} with updated annotations:`, error);
-    }
+
+    // Используем более эффективное локальное обновление вместо полной перезагрузки
+    updateAnnotationsLocally(chartType, chart);
 }
 
 // Функция для инициализации кнопок управления после загрузки графика

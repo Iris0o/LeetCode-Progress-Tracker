@@ -8,6 +8,11 @@ from datetime import datetime
 from config import FIGURE_SIZE, PLOT_STYLE, MARKER_SIZE, TITLE_FONT_SIZE, AXIS_FONT_SIZE, LEGEND_FONT_SIZE
 from modules.i18n import i18n
 
+# Константы для аннотаций
+ANNOTATION_X_OFFSET_PERCENT = 0.03  # 3% от временного диапазона для смещения аннотации по X
+ANNOTATION_Y_OFFSET_BASE = -15  # Базовое смещение по Y для аннотаций
+ANNOTATION_Y_OFFSET_STEP = 18  # Шаг смещения для избежания пересечений
+
 
 def _create_username_annotations(df, series):
     """Создает аннотации с именами пользователей над конечными точками линий графика."""
@@ -27,16 +32,16 @@ def _create_username_annotations(df, series):
         # Берем последнюю точку для размещения подписи, но смещаем по X назад
         last_point = data_points[-1]
         
-        # Вычисляем смещение по X (примерно 3% от временного диапазона назад)
+        # Вычисляем смещение по X (используем константу для процента от временного диапазона)
         if len(data_points) > 1:
             time_range = data_points[-1]['x'] - data_points[0]['x']
-            x_offset = time_range * 0.03  # 3% от диапазона времени
+            x_offset = time_range * ANNOTATION_X_OFFSET_PERCENT
             annotation_x = last_point['x'] - x_offset
         else:
             annotation_x = last_point['x']
         
         # Динамическое смещение для избежания пересечений
-        offset_y = -15 - (i * 18)  # Каждая следующая подпись выше предыдущей
+        offset_y = ANNOTATION_Y_OFFSET_BASE - (i * ANNOTATION_Y_OFFSET_STEP)
         
         # Создаем аннотацию для имени пользователя
         annotation = {
@@ -87,16 +92,16 @@ def _create_difficulty_annotations(series_list):
         # Берем последнюю точку для размещения подписи, но смещаем по X назад
         last_point = data_points[-1]
         
-        # Вычисляем смещение по X (примерно 3% от временного диапазона назад)
+        # Вычисляем смещение по X (используем константу для процента от временного диапазона)
         if len(data_points) > 1:
             time_range = data_points[-1]['x'] - data_points[0]['x']
-            x_offset = time_range * 0.03  # 3% от диапазона времени
+            x_offset = time_range * ANNOTATION_X_OFFSET_PERCENT
             annotation_x = last_point['x'] - x_offset
         else:
             annotation_x = last_point['x']
         
         # Динамическое смещение для избежания пересечений
-        offset_y = -15 - (i * 18)
+        offset_y = ANNOTATION_Y_OFFSET_BASE - (i * ANNOTATION_Y_OFFSET_STEP)
         
         # Создаем аннотацию для названия серии
         annotation = {
