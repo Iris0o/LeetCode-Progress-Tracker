@@ -8,6 +8,131 @@ from datetime import datetime
 from config import FIGURE_SIZE, PLOT_STYLE, MARKER_SIZE, TITLE_FONT_SIZE, AXIS_FONT_SIZE, LEGEND_FONT_SIZE
 from modules.i18n import i18n
 
+# Константы для аннотаций
+ANNOTATION_X_OFFSET_PERCENT = 0.03  # 3% от временного диапазона для смещения аннотации по X
+ANNOTATION_Y_OFFSET_BASE = -15  # Базовое смещение по Y для аннотаций
+ANNOTATION_Y_OFFSET_STEP = 18  # Шаг смещения для избежания пересечений
+
+
+def _create_username_annotations(df, series):
+    """Создает аннотации с именами пользователей над конечными точками линий графика."""
+    annotations = []
+    
+    # Ограничиваем количество аннотаций, чтобы не загромождать график
+    max_annotations = 8
+    series_to_annotate = series[:max_annotations] if len(series) > max_annotations else series
+    
+    for i, serie in enumerate(series_to_annotate):
+        username = serie['name']
+        data_points = serie['data']
+        
+        if not data_points:
+            continue
+            
+        # Берем последнюю точку для размещения подписи, но смещаем по X назад
+        last_point = data_points[-1]
+        
+        # Вычисляем смещение по X (используем константу для процента от временного диапазона)
+        if len(data_points) > 1:
+            time_range = data_points[-1]['x'] - data_points[0]['x']
+            x_offset = time_range * ANNOTATION_X_OFFSET_PERCENT
+            annotation_x = last_point['x'] - x_offset
+        else:
+            annotation_x = last_point['x']
+        
+        # Динамическое смещение для избежания пересечений
+        offset_y = ANNOTATION_Y_OFFSET_BASE - (i * ANNOTATION_Y_OFFSET_STEP)
+        
+        # Создаем аннотацию для имени пользователя
+        annotation = {
+            'x': annotation_x,
+            'y': last_point['y'],
+            'marker': {
+                'size': 0  # Скрываем маркер аннотации
+            },
+            'label': {
+                'text': username,
+                'offsetY': offset_y,
+                'offsetX': -10,  # Небольшое дополнительное смещение влево
+                'style': {
+                    'background': '#fff',
+                    'color': '#333',
+                    'fontSize': '12px',
+                    'fontWeight': 'bold',
+                    'textAnchor': 'middle',
+                    'padding': {
+                        'left': 5,
+                        'right': 5,
+                        'top': 2,
+                        'bottom': 2
+                    },
+                    'border': {
+                        'color': '#ccc',
+                        'width': 1
+                    }
+                }
+            }
+        }
+        annotations.append(annotation)
+    
+    return annotations
+
+
+def _create_difficulty_annotations(series_list):
+    """Создает аннотации для графиков уровней сложности с несколькими сериями."""
+    annotations = []
+    
+    for i, serie in enumerate(series_list):
+        serie_name = serie['name']
+        data_points = serie['data']
+        
+        if not data_points:
+            continue
+            
+        # Берем последнюю точку для размещения подписи, но смещаем по X назад
+        last_point = data_points[-1]
+        
+        # Вычисляем смещение по X (используем константу для процента от временного диапазона)
+        if len(data_points) > 1:
+            time_range = data_points[-1]['x'] - data_points[0]['x']
+            x_offset = time_range * ANNOTATION_X_OFFSET_PERCENT
+            annotation_x = last_point['x'] - x_offset
+        else:
+            annotation_x = last_point['x']
+        
+        # Динамическое смещение для избежания пересечений
+        offset_y = ANNOTATION_Y_OFFSET_BASE - (i * ANNOTATION_Y_OFFSET_STEP)
+        
+        # Создаем аннотацию для названия серии
+        annotation = {
+            'x': annotation_x,
+            'y': last_point['y'],
+            'marker': {
+                'size': 0  # Скрываем маркер аннотации
+            },
+            'label': {
+                'text': serie_name,
+                'offsetY': offset_y,
+                'offsetX': -15,  # Небольшое дополнительное смещение влево
+                'style': {
+                    'background': serie.get('color', '#333'),
+                    'color': '#fff',
+                    'fontSize': '11px',
+                    'fontWeight': 'bold',
+                    'textAnchor': 'middle',
+                    'padding': {
+                        'left': 4,
+                        'right': 4,
+                        'top': 2,
+                        'bottom': 2
+                    }
+                }
+            }
+        }
+        annotations.append(annotation)
+    
+    return annotations
+
 
 def create_progress_plot_data(df, language="ru"):
     """Создает конфигурацию для интерактивного графика прогресса с ApexCharts."""
@@ -43,7 +168,17 @@ def create_progress_plot_data(df, language="ru"):
                 'show': True
             },
             'animations': {
-                'enabled': True
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 100
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': series,
@@ -76,6 +211,9 @@ def create_progress_plot_data(df, language="ru"):
         },
         'legend': {
             'position': 'top'
+        },
+        'annotations': {
+            'points': _create_username_annotations(df, series)
         }
     }
 
@@ -116,7 +254,17 @@ def create_total_plot_data(df, language="ru"):
                 'show': True
             },
             'animations': {
-                'enabled': True
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 100
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': series,
@@ -149,6 +297,9 @@ def create_total_plot_data(df, language="ru"):
         },
         'legend': {
             'position': 'top'
+        },
+        'annotations': {
+            'points': _create_username_annotations(df, series)
         }
     }
 
@@ -190,6 +341,19 @@ def create_difficulty_breakdown_data(
             'stacked': True,
             'toolbar': {
                 'show': True
+            },
+            'animations': {
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 150
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': [
@@ -274,6 +438,19 @@ def create_daily_progress_data(data_dict, language="ru"):
             'height': 500,
             'toolbar': {
                 'show': True
+            },
+            'animations': {
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 100
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': series,
@@ -306,6 +483,9 @@ def create_daily_progress_data(data_dict, language="ru"):
         },
         'legend': {
             'position': 'top'
+        },
+        'annotations': {
+            'points': _create_username_annotations(df_daily, series)
         }
     }
 
@@ -356,6 +536,19 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard, language="ru"):
             'height': 600,
             'toolbar': {
                 'show': True
+            },
+            'animations': {
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 120
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': series,
@@ -391,6 +584,9 @@ def create_difficulty_total_data(df_easy, df_medium, df_hard, language="ru"):
             'onItemClick': {
                 'toggleDataSeries': False
             }
+        },
+        'annotations': {
+            'points': _create_difficulty_annotations(series)
         }
     }
 
@@ -442,6 +638,19 @@ def create_difficulty_progress_data(
             'height': 600,
             'toolbar': {
                 'show': True
+            },
+            'animations': {
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 800,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 120
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 350
+                }
             }
         },
         'series': series,
@@ -477,6 +686,9 @@ def create_difficulty_progress_data(
             'onItemClick': {
                 'toggleDataSeries': False
             }
+        },
+        'annotations': {
+            'points': _create_difficulty_annotations(series)
         }
     }
 
@@ -556,6 +768,19 @@ def create_weekly_heatmap_data(data_dict, language="ru"):
             'height': 400,
             'toolbar': {
                 'show': True
+            },
+            'animations': {
+                'enabled': True,
+                'easing': 'easeinout',
+                'speed': 1000,
+                'animateGradually': {
+                    'enabled': True,
+                    'delay': 200
+                },
+                'dynamicAnimation': {
+                    'enabled': True,
+                    'speed': 400
+                }
             }
         },
         'series': series,

@@ -136,6 +136,10 @@ h1 {
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     padding: 20px;
+    display: none; /* По умолчанию скрыты */
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chart h2 {
@@ -150,6 +154,15 @@ h1 {
     border-radius: 8px;
     border: 1px solid #e0e0e0;
     margin: 10px 0;
+    opacity: 0;
+    transform: scale(0.98);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s;
+}
+
+/* Анимация появления графиков */
+.chart.active .plot-container {
+    opacity: 1;
+    transform: scale(1);
 }
 
 /* Кнопки и элементы управления */
@@ -262,12 +275,31 @@ h1 {
 }
 
 /* Обновленные стили для графиков */
+.chart {
+    display: none; /* По умолчанию скрыты */
+}
+
 .chart.active {
-    display: block;
+    display: block !important;
+    opacity: 1;
+    transform: translateY(0);
+    animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .chart:not(.active) {
-    display: none;
+    display: none !important;
+}
+
+/* Анимация появления */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Стили для статистики со сложностью */
